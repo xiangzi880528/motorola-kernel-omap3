@@ -374,7 +374,7 @@ static int __init led_cpcap_lm3559_init(void)
 static int __init is_ld_cpcap_rgb_on(void)
 {
 	u8 device_available;
-	struct device_node *node;
+	/*struct device_node *node;
 	const void *prop;
 
 	node = of_find_node_by_path(DT_NOTIFICATION_LED);
@@ -393,7 +393,8 @@ static int __init is_ld_cpcap_rgb_on(void)
 		return -ENODEV;
 	}
 
-	of_node_put(node);
+	of_node_put(node);*/
+	device_available = 1;
 	return device_available;
 }
 
