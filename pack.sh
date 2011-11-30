@@ -1,3 +1,4 @@
+mkdir -p bootimg/cm/lib/modules/
 cp drivers/misc/modem_pm_driver/modem_pm_driver.ko bootimg/cm/lib/modules/
 cp drivers/misc/netmux/netmux.ko bootimg/cm/lib/modules/
 cp drivers/misc/netmux_linkdriver/usb/netmux_linkdriver.ko bootimg/cm/lib/modules/
