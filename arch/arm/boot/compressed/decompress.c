@@ -48,9 +48,9 @@ extern void error(char *);
 #include "../../../../lib/decompress_unlzo.c"
 #endif
 
-+#ifdef CONFIG_KERNEL_XZ
-+#include "../../../../lib/decompress_unxz.c"
-+#endif
+#ifdef CONFIG_KERNEL_XZ
+#include "../../../../lib/decompress_unxz.c"
+#endif
 
 void do_decompress(u8 *input, int len, u8 *output, void (*error)(char *x))
 {
