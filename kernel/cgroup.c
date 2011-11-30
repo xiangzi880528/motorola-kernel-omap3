@@ -179,8 +179,6 @@ int cgroup_lock_is_held(void)
 }
 #endif /* #else #ifdef CONFIG_PROVE_LOCKING */
 
-EXPORT_SYMBOL_GPL(cgroup_lock_is_held);
-
 /* convenient tests for these bits */
 inline int cgroup_is_removed(const struct cgroup *cgrp)
 {
