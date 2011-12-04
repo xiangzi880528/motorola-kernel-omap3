@@ -33,6 +33,7 @@
 *.xz
 *.patch
 *.gcno
+*.img
 
 #
 # Top-level generic files
@@ -41,7 +42,6 @@ tags
 TAGS
 zImage
 vmlinux
-boot.img
 System.map
 Module.markers
 Module.symvers
