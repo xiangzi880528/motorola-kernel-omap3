@@ -149,7 +149,8 @@ config MACH_MAPPHONE
 
 config MACH_MAPPHONE_OC
         bool "Motorola Android Platform phone overclock"
-        depends on MACH_MAPPHONE
+        depends on MACH_MAPPHONE 
+        select CPU_FREQ_STAT
         help
           Create /proc/overclock/mpu_opps interface.
           If this option is selected, you can change MPU's frequency and voltage dynamically

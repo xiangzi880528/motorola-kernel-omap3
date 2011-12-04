@@ -50,7 +50,7 @@ struct cpufreq_stats_attribute {
 	ssize_t(*show) (struct cpufreq_stats *, char *);
 };
 
-static int cpufreq_stats_freq_update(unsigned int cpu, int index, unsigned int freq)
+int cpufreq_stats_freq_update(unsigned int cpu, int index, unsigned int freq)
 {
 	struct cpufreq_stats *stat;
 	spin_lock(&cpufreq_stats_lock);
@@ -59,6 +59,7 @@ static int cpufreq_stats_freq_update(unsigned int cpu, int index, unsigned int f
 	spin_unlock(&cpufreq_stats_lock);
 	return 0;
 }
+EXPORT_SYMBOL(cpufreq_stats_freq_update);
 
 static int cpufreq_stats_update(unsigned int cpu)
 {
@@ -385,8 +386,6 @@ static void __exit cpufreq_stats_exit(void)
 		cpufreq_stats_free_table(cpu);
 	}
 }
-
-EXPORT_SYMBOL(cpufreq_stats_freq_update);
 
 MODULE_AUTHOR("Zou Nan hai <nanhai.zou@intel.com>");
 MODULE_DESCRIPTION("'cpufreq_stats' - A driver to export cpufreq stats "
