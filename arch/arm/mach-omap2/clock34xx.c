@@ -49,6 +49,7 @@
 #include <linux/vmalloc.h>
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
+#include "omap3-opp.h"
 #endif
 
 static const struct clkops clkops_noncore_dpll_ops;
@@ -1222,9 +1223,7 @@ static int __init overclock_init(void)
 	struct proc_dir_entry *proc_entry;
 	int i;
 
-	extern struct omap_opp mapphone_omap3430_mpu_rate_table;
-
-	oc_mpu_opps = &mapphone_omap3430_mpu_rate_table;
+	oc_mpu_opps = &omap34xx_mpu_rate_table;
 
 	policy = cpufreq_cpu_get(0);
 	mpu_clk = clk_get(NULL, MPU_CLK);

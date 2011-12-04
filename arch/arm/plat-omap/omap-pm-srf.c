@@ -393,7 +393,11 @@ void omap_pm_if_exit(void)
 
 u8 omap_pm_get_max_vdd1_opp()
 {
-	return VDD1_OPP6;
+	if (cpu_is_omap3630()) {
+		return VDD1_OPP4;
+	} else {
+		return VDD1_OPP6;
+	}
 }
 EXPORT_SYMBOL(omap_pm_get_max_vdd1_opp);
 

@@ -149,89 +149,6 @@
 
 char *bp_model = "CDMA";
 
-struct omap_opp mapphone_omap3430_mpu_rate_table[] = {
-	{0, 0, 0, 0},
-	/*OPP1*/
-	{S125M, VDD1_OPP1, 0x20, 0x0},
-	/*OPP2*/
-	{S250M, VDD1_OPP2, 0x27, 0x0},
-	/*OPP3*/
-	{S500M, VDD1_OPP3, 0x32, 0x0},
-	/*OPP4*/
-	{S550M, VDD1_OPP4, 0x38, 0x0},
-	/*OPP5*/
-	{S720M, VDD1_OPP5, 0x3E, 0x0},
-	/*OPP6*/
-	{S800M, VDD1_OPP6, 0x3E, 0x0},
-};
-
-#define S80M 80000000
-#define S160M 160000000
-
-static struct omap_opp mapphone_omap3430_l3_rate_table[] = {
-	{0, 0, 0, 0},
-	/*OPP1*/
-	{0, VDD2_OPP1, 0x20, 0x0},
-	/*OPP2*/
-	{S80M, VDD2_OPP2, 0x27, 0x0},
-	/*OPP3*/
-	{S160M, VDD2_OPP3, 0x2E, 0x0},
-};
-
-static struct omap_opp mapphone_omap3430_dsp_rate_table[] = {
-	{0, 0, 0, 0},
-	/*OPP1*/
-	{S90M, VDD1_OPP1, 0x20, 0x0},
-	/*OPP2*/
-	{S180M, VDD1_OPP2, 0x27, 0x0},
-	/*OPP3*/
-	{S360M, VDD1_OPP3, 0x32, 0x0},
-	/*OPP4*/
-	{S400M, VDD1_OPP4, 0x38, 0x0},
-	/*OPP5*/
-	{S430M, VDD1_OPP5, 0x38, 0x0},
-	/*OPP6*/
-	{S520M, VDD1_OPP6, 0x3E, 0x0},
-};
-
-static struct omap_opp mapphone_omap3630_mpu_rate_table[] = {
-	{0, 0, 0, 0},
-	/*Add headroom for CPCAP IR drop*/
-	/*OPP1,CPCAP 1.0125v*/
-	{S300M, VDD1_OPP1, 0x21, 0x0},
-	/*OPP2,CPCAP 1.2v*/
-	{S600M, VDD1_OPP2, 0x30, 0x0},
-	/*OPP3,CPCAP 1.325v*/
-	{S800M, VDD1_OPP3, 0x3A, 0x0},
-	/*OPP4,CPCAP 1.375v*/
-	{S1000M, VDD1_OPP4, 0x3E, 0x0},
-	/*OPP5,CPCAP 1.375v*/
-	{S1200M, VDD1_OPP5, 0x3E, 0x0},
-};
-
-
-static struct omap_opp mapphone_omap3630_l3_rate_table[] = {
-	{0, 0, 0, 0},
-	/*OPP1*/
-	{S100M, VDD2_OPP1, 0x20, 0x0},
-	/*OPP2*/
-	{S200M, VDD2_OPP2, 0x30, 0x0},
-};
-
-static struct omap_opp mapphone_omap3630_dsp_rate_table[] = {
-	{0, 0, 0, 0},
-	/*OPP1,CPCAP 1.0125v*/
-	{S260M, VDD1_OPP1, 0x21, 0x0},
-	/*OPP2,CPCAP 1.2v*/
-	{S520M, VDD1_OPP2, 0x30, 0x0},
-	/*OPP3,CPCAP 1.325v*/
-	{S660M, VDD1_OPP3, 0x3A, 0x0},
-	/*OPP4,CPCAP 1.375v*/
-	{S800M, VDD1_OPP4, 0x3E, 0x0},
-	/*OPP5,CPCAP 1.375v*/
-	{S65M, VDD1_OPP5, 0x3E, 0x0},
-};
-
 static struct cpuidle_params mapphone_cpuidle_params_table[] = {
 	/* C1 */
 	{1, 0, 12, 15},
@@ -254,15 +171,15 @@ static void __init mapphone_init_irq(void)
 	if (cpu_is_omap3630()) {
 		omap2_init_common_hw(JEDEC_JESD209A_sdrc_params,
 			JEDEC_JESD209A_sdrc_params,
-			mapphone_omap3630_mpu_rate_table,
-			mapphone_omap3630_dsp_rate_table,
-			mapphone_omap3630_l3_rate_table);
+			omap3630_mpu_rate_table,
+			omap3630_dsp_rate_table,
+			omap3630_l3_rate_table);
 	} else{
 		omap2_init_common_hw(JEDEC_JESD209A_sdrc_params,
 			JEDEC_JESD209A_sdrc_params,
-			mapphone_omap3430_mpu_rate_table,
-			mapphone_omap3430_dsp_rate_table,
-			mapphone_omap3430_l3_rate_table);
+			omap34xx_mpu_rate_table,
+			omap34xx_dsp_rate_table,
+			omap34xx_l3_rate_table);
 	}
 	omap3_pm_init_cpuidle(mapphone_cpuidle_params_table);
 	omap_init_irq();
