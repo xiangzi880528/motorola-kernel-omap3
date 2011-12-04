@@ -1148,6 +1148,8 @@ static struct omap_opp *oc_mpu_opps;
 static struct cpufreq_policy *policy;
 static struct clk *mpu_clk;
 
+extern int cpufreq_stats_freq_update(unsigned int cpu, int index, unsigned int freq);
+
 static char *buf;
 
 static int proc_mpu_opps_read(char *buffer, char **buffer_location,
@@ -1207,6 +1209,7 @@ static int proc_mpu_opps_write(struct file *filp, const char __user *buffer,
 			policy->min = policy->cpuinfo.min_freq =
 			policy->user_policy.min = rate / 1000;
 		}
+			cpufreq_stats_freq_update(0, MAX_VDD1_OPP - index, rate / 1000);
 	}
 	else
 		printk(KERN_INFO "overclock: insufficient parameters for mpu_opps\n");
