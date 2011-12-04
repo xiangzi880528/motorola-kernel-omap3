@@ -7,5 +7,5 @@ cp drivers/misc/wl127x_test.ko bootimg/cm/lib/modules/
 cp arch/arm/boot/zImage bootimg/
 echo "Copy kernel modules done!"
 cd bootimg/
-./repack-bootimg.pl zImage cm/ boot.img
+./repack-bootimg.pl zImage cm/ \#$(cat $(pwd)/../.version)-$(stat -c %y $(pwd)/../arch/arm/boot/zImage)
 echo "Pack boot image done!"
