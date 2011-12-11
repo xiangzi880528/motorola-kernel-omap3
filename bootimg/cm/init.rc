@@ -11,6 +11,7 @@ loglevel 3
     export ANDROID_ROOT /system
     export ANDROID_ASSETS /system/app
     export ANDROID_DATA /data
+    export DOWNLOAD_CACHE /cache/download
     export EXTERNAL_STORAGE /mnt/sdcard
     export ASEC_MOUNTPOINT /mnt/asec
     export SD_EXT_DIRECTORY /sd-ext
@@ -31,7 +32,9 @@ loglevel 3
     mkdir /system
     mkdir /data 0771 system system
     mkdir /cache 0771 system cache
-    mkdir /config 0500 root root
+#    mkdir /config 0500 root root
+
+    # Directory for putting things only root should see.
     mkdir /mnt/secure 0700 root root
     mkdir /mnt/secure/staging 0700 root root
     mkdir /mnt/secure/asec  0700 root root
@@ -73,8 +76,8 @@ loglevel 3
     chown system system /data
     chmod 0771 /data
 
-    mount squashfs loop@/system/lib/modules/modules.sqf /system/lib/modules ro
-    mount squashfs loop@/system/xbin/xbin.sqf /system/xbin ro
+    #mount squashfs loop@/system/lib/modules/modules.sqf /system/lib/modules ro
+    #mount squashfs loop@/system/xbin/xbin.sqf /system/xbin ro
 
     mkdir /data/dontpanic
     chown root log /data/dontpanic
@@ -119,9 +122,12 @@ loglevel 3
     mkdir /data/local 0771 mot_tcmd shell
     mkdir /data/local/tmp 0771 mot_tcmd shell
     mkdir /data/data 0771 system system
+    mkdir /data/local/download 0771 system cache
     mkdir /data/app-private 0771 system system
     mkdir /data/app 0771 system system
     mkdir /data/property 0700 root root
+
+    mkdir /cache/download 0771 system cache
 
     mkdir /data/dalvik-cache 0771 system system
     chown system system /data/dalvik-cache
@@ -385,7 +391,7 @@ service ap_fmloader /system/bin/wlan_loader -f /system/etc/wifi/fw_tiwlan_ap.bin
     disabled
     oneshot
 
-service hostapd /system/bin/hostapd -d /data/misc/wifi/hostapd.conf
+service hostapd /system/bin/Hostapd -d /data/misc/wifi/hostapd.conf
     class post-zygote_services
     socket hostapd_tiwlan0 dgram 660 wifi wifi
     disabled
