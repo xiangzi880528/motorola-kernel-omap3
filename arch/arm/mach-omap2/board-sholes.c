@@ -101,16 +101,7 @@
 #define SHOLES_ADB_PRODUCT_ID		0x41DB
 #define SHOLES_RNDIS_PRODUCT_ID		0x41E4
 #define SHOLES_RNDIS_ADB_PRODUCT_ID		0x41E5
-
-#ifdef CONFIG_USB_MOT_ANDROID
-#define SHOLES_PHONE_PORTAL_PRODUCT_ID               0x41D8
-#define SHOLES_PHONE_PORTAL_ADB_PRODUCT_ID           0x41DA
-#define SHOLES_MTP_PRODUCT_ID                        0x41D6
-#define SHOLES_MTP_ADB_PRODUCT_ID                    0x41DC
-#endif
-
 #define FACTORY_PRODUCT_ID		0x41D4
-#define FACTORY_ADB_PRODUCT_ID		0x41D4
 
 #define SHOLES_MMCPROBE_ENABLED 0
 
@@ -128,6 +119,14 @@ static struct omap_opp sholes_mpu_rate_table[] = {
 	{S550M, VDD1_OPP4, 0x38},
 	/*OPP5*/
 	{S600M, VDD1_OPP5, 0x3E},
+	/*
+	 * Disclamer: 700mhz and 800mhz are NOT officially supported,
+	 * use at your own risk.
+	 */
+	/*OPP6*/
+	{S700M, VDD1_OPP6, 0x40},
+	/*OPP7*/
+	{S800M, VDD1_OPP7, 0x44},
 };
 
 #define S80M 80250000
@@ -209,35 +208,7 @@ static char *usb_functions_all[] = {
 #ifdef CONFIG_USB_ANDROID_ACM
 	"acm",
 #endif
-#ifdef CONFIG_USB_MOT_ANDROID
-	"usbnet",
-	"mtp",
-#endif
 };
-
-#ifdef CONFIG_USB_MOT_ANDROID
-static char *usb_functions_phone_portal[] = {
-	"usbnet",
-	"mtp",
-	"acm",
-};
-
-static char *usb_functions_phone_portal_adb[] = {
-	"usbnet",
-	"mtp",
-	"acm",
-	"adb",
-};
-
-static char *usb_functions_mtp[] = {
-	"mtp",
-};
-
-static char *usb_functions_mtp_adb[] = {
-	"mtp",
-	"adb",
-};
-#endif
 
 static struct android_usb_product usb_products[] = {
 	{
@@ -260,38 +231,10 @@ static struct android_usb_product usb_products[] = {
 		.num_functions	= ARRAY_SIZE(usb_functions_rndis_adb),
 		.functions	= usb_functions_rndis_adb,
 	},
-#ifdef CONFIG_USB_MOT_ANDROID
-	{
-		.product_id     = SHOLES_PHONE_PORTAL_PRODUCT_ID,
-		.num_functions  = ARRAY_SIZE(usb_functions_phone_portal),
-		.functions      = usb_functions_phone_portal,
-	},
-	{
-		.product_id     = SHOLES_PHONE_PORTAL_ADB_PRODUCT_ID,
-		.num_functions  = ARRAY_SIZE(usb_functions_phone_portal_adb),
-		.functions      = usb_functions_phone_portal_adb,
-	},
-	{
-		.product_id     = SHOLES_MTP_PRODUCT_ID,
-		.num_functions  = ARRAY_SIZE(usb_functions_mtp),
-		.functions      = usb_functions_mtp,
-	},
-	{
-		.product_id     = SHOLES_PHONE_PORTAL_ADB_PRODUCT_ID,
-		.num_functions  = ARRAY_SIZE(usb_functions_mtp_adb),
-		.functions      = usb_functions_mtp_adb,
-	},
-#endif
-
 };
 
 static char *factory_usb_functions[] = {
 	"usbnet"
-};
-
-static char *factory_usb_functions_adb[] = {
-	"usbnet",
-	"adb"
 };
 
 static struct android_usb_product factory_usb_products[] = {
@@ -299,11 +242,6 @@ static struct android_usb_product factory_usb_products[] = {
 		.product_id	= FACTORY_PRODUCT_ID,
 		.num_functions	= ARRAY_SIZE(factory_usb_functions),
 		.functions	= factory_usb_functions,
-	},
-	{
-		.product_id	= FACTORY_ADB_PRODUCT_ID,
-		.num_functions	= ARRAY_SIZE(factory_usb_functions_adb),
-		.functions	= factory_usb_functions_adb,
 	},
 };
 
@@ -329,8 +267,8 @@ static struct android_usb_platform_data andusb_plat_factory = {
 	.serial_number		= device_serial,
 	.num_products = ARRAY_SIZE(factory_usb_products),
 	.products = factory_usb_products,
-	.num_functions = ARRAY_SIZE(factory_usb_functions_adb),
-	.functions = factory_usb_functions_adb,
+	.num_functions = ARRAY_SIZE(factory_usb_functions),
+	.functions = factory_usb_functions,
 };
 
 static struct platform_device androidusb_device = {
@@ -371,6 +309,10 @@ static struct platform_device rndis_device = {
 };
 #endif
 
+static struct platform_device usbnet_device = {
+	.name	= "usbnet",
+};
+
 extern void musb_disable_idle(int on);
 
 static int cpcap_usb_connected_probe(struct platform_device *pdev)
@@ -406,6 +348,7 @@ static void sholes_gadget_init(void)
 	int i;
 	char *src;
 #endif
+	int factory_test = !strcmp(boot_mode, "factorycable");
 
 	reg = DIE_ID_REG_BASE + DIE_ID_REG_OFFSET;
 	val[0] = omap_readl(reg);
@@ -425,12 +368,18 @@ static void sholes_gadget_init(void)
 #endif
 
 	/* use different USB configuration when in factory test mode */
-	if (!strcmp(boot_mode, "factorycable"))
+	if (factory_test) {
 		androidusb_device.dev.platform_data = &andusb_plat_factory;
+		platform_device_register(&usbnet_device);
+	}
 
 	platform_device_register(&usb_mass_storage_device);
 #ifdef CONFIG_USB_ANDROID_RNDIS
-	platform_device_register(&rndis_device);
+	/* Don't include RNDIS in factory test mode
+	 * to avoid interference with the usbnet driver.
+	 */
+	if (!factory_test)
+		platform_device_register(&rndis_device);
 #endif
 	platform_device_register(&androidusb_device);
 	platform_driver_register(&cpcap_usb_connected_driver);
