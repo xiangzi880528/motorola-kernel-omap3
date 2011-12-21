@@ -36,8 +36,6 @@
 #include <plat/mmc.h>
 #include <plat/cpu.h>
 
-#include "omap_hsmmc_raw.h"
-
 /* OMAP HSMMC Host Controller Registers */
 #define OMAP_HSMMC_SYSCONFIG	0x0010
 #define OMAP_HSMMC_SYSSTATUS	0x0014
@@ -843,10 +841,15 @@ static void omap_hsmmc_detect(struct work_struct *work)
 		carddetect = -ENOSYS;
 	}
 
-	if (carddetect)
+	if (carddetect) {
 		mmc_detect_change(host->mmc, (HZ * 200) / 1000);
-	else
+	} else {
+		mmc_host_enable(host->mmc);
+		omap_hsmmc_reset_controller_fsm(host, SRD);
+		mmc_host_lazy_disable(host->mmc);
+
 		mmc_detect_change(host->mmc, (HZ * 50) / 1000);
+	}
 }
 
 /*
@@ -960,12 +963,11 @@ static int omap_hsmmc_start_dma_transfer(struct omap_hsmmc_host *host,
 
 	/*
 	 * If for some reason the DMA transfer is still active,
-	 * we free the dma directly without waiting, as the last
-	 * request should already reported err for this dma transfer
-	 *
-	 * One possibility we arrive here is _cb not called
+	 * we wait for timeout period and free the dma
 	 */
 	if (host->dma_ch != -1) {
+		set_current_state(TASK_UNINTERRUPTIBLE);
+		schedule_timeout(100);
 		if (down_trylock(&host->sem)) {
 			omap_free_dma(host->dma_ch);
 			host->dma_ch = -1;
@@ -1243,28 +1245,6 @@ static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 	return mmc_slot(host).card_detect(mmc_slot(host).card_detect_irq);
 }
 
-
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-static void omap_hsmmc_status_notify_cb(int card_present, void *dev_id)
-{
-       struct mmc_omap_host *host = dev_id;
-       struct omap_mmc_slot_data *slot = &mmc_slot(host);
-
-        printk(KERN_DEBUG "%s: card_present %d\n", mmc_hostname(host->mmc),
-                              card_present);
-
-       host->carddetect = slot->card_detect(slot->card_detect_irq);
-
-       sysfs_notify(&host->mmc->class_dev.kobj, NULL, "cover_switch");
-       if (host->carddetect) {
-               mmc_detect_change(host->mmc, (HZ * 200) / 1000);
-       } else {
-               mmc_omap_reset_controller_fsm(host, SRD);
-               mmc_detect_change(host->mmc, (HZ * 50) / 1000);
-       }
-}
-#endif
-
 static int omap_hsmmc_get_ro(struct mmc_host *mmc)
 {
 	struct omap_hsmmc_host *host = mmc_priv(mmc);
@@ -1331,7 +1311,7 @@ static int omap_hsmmc_enabled_to_disabled(struct omap_hsmmc_host *host)
 	if (host->power_mode == MMC_POWER_OFF)
 		return 0;
 
-	return OMAP_MMC_SLEEP_TIMEOUT;
+	return msecs_to_jiffies(OMAP_MMC_SLEEP_TIMEOUT);
 }
 
 /* Handler for [DISABLED -> REGSLEEP / CARDSLEEP] transition */
@@ -1367,14 +1347,11 @@ static int omap_hsmmc_disabled_to_sleep(struct omap_hsmmc_host *host)
 	dev_dbg(mmc_dev(host->mmc), "DISABLED -> %s\n",
 		host->dpm_state == CARDSLEEP ? "CARDSLEEP" : "REGSLEEP");
 
-	if (mmc_slot(host).no_off)
-		return 0;
-
 	if ((host->mmc->caps & MMC_CAP_NONREMOVABLE) ||
 	    mmc_slot(host).card_detect ||
 	    (mmc_slot(host).get_cover_state &&
 	     mmc_slot(host).get_cover_state(host->dev, host->slot_id)))
-		return OMAP_MMC_OFF_TIMEOUT;
+		return msecs_to_jiffies(OMAP_MMC_OFF_TIMEOUT);
 
 	return 0;
 }
@@ -1383,9 +1360,6 @@ static int omap_hsmmc_disabled_to_sleep(struct omap_hsmmc_host *host)
 static int omap_hsmmc_sleep_to_off(struct omap_hsmmc_host *host)
 {
 	if (!mmc_try_claim_host(host->mmc))
-		return 0;
-
-	if (mmc_slot(host).no_off)
 		return 0;
 
 	if (!((host->mmc->caps & MMC_CAP_NONREMOVABLE) ||
@@ -1546,9 +1520,6 @@ static const struct mmc_host_ops omap_hsmmc_ops = {
 	.get_cd = omap_hsmmc_get_cd,
 	.get_ro = omap_hsmmc_get_ro,
 	/* NYET -- enable_sdio_irq */
-	.panic_probe = raw_mmc_panic_probe,
-	.panic_write = raw_mmc_panic_write,
-	.panic_erase = raw_mmc_panic_erase,
 };
 
 static const struct mmc_host_ops omap_hsmmc_ps_ops = {
@@ -1559,9 +1530,6 @@ static const struct mmc_host_ops omap_hsmmc_ps_ops = {
 	.get_cd = omap_hsmmc_get_cd,
 	.get_ro = omap_hsmmc_get_ro,
 	/* NYET -- enable_sdio_irq */
-	.panic_probe = raw_mmc_panic_probe,
-	.panic_write = raw_mmc_panic_write,
-	.panic_erase = raw_mmc_panic_erase,
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -1689,15 +1657,6 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	host->mapbase	= res->start;
 	host->base	= ioremap(host->mapbase, SZ_4K);
 	host->power_mode = -1;
-
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-       if (pdata->slots[0].embedded_sdio)
-               mmc_set_embedded_sdio_data(mmc,
-                               &pdata->slots[0].embedded_sdio->cis,
-                               &pdata->slots[0].embedded_sdio->cccr,
-                               pdata->slots[0].embedded_sdio->funcs,
-                               pdata->slots[0].embedded_sdio->num_funcs);
-#endif
 
 	platform_set_drvdata(pdev, host);
 	INIT_WORK(&host->mmc_carddetect_work, omap_hsmmc_detect);
@@ -1845,12 +1804,6 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 			goto err_irq_cd;
 		}
 	}
-
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-       else if (mmc_slot(host).register_status_notify) {
-               mmc_slot(host).register_status_notify(omap_hsmmc_status_notify_cb, host);
-       }
-#endif
 
 	OMAP_HSMMC_WRITE(host->base, ISE, INT_EN_MASK);
 	OMAP_HSMMC_WRITE(host->base, IE, INT_EN_MASK);

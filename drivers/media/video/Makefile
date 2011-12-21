@@ -191,5 +191,3 @@ EXTRA_CFLAGS += -Idrivers/media/common/tuners
 ifdef CONFIG_VIDEO_OMAP3_HP3A
 EXTRA_CFLAGS += -Idrivers/media/video/hp3a
 endif
-
-obj-$(CONFIG_HDMI_TDA19989) += tda19989.o

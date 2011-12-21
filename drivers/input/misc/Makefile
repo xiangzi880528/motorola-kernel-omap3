@@ -36,5 +36,3 @@ obj-$(CONFIG_INPUT_GPIO)		+= gpio_event.o gpio_matrix.o gpio_input.o gpio_output
 obj-$(CONFIG_INPUT_KEYCHORD)		+= keychord.o
 obj-$(CONFIG_INPUT_HALLEFFECT_BU52014HV) += bu52014hfv.o
 obj-$(CONFIG_INPUT_PROXIMITY_SFH7743)	+= sfh7743.o
-obj-$(CONFIG_KEYBOARD_ADP5588)          += adp5588_keypad.o
-obj-$(CONFIG_INPUT_ALS_IR_ISL29030)	+= isl29030.o

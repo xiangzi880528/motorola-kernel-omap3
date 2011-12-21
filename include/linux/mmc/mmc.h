@@ -255,7 +255,6 @@ struct _mmc_csd {
 #define EXT_CSD_HS_TIMING	185	/* R/W */
 #define EXT_CSD_CARD_TYPE	196	/* RO */
 #define EXT_CSD_REV		192	/* RO */
-#define EXT_CSD_CSD_STRUCTURE	194	/* RO */
 #define EXT_CSD_SEC_CNT		212	/* RO, 4 bytes */
 #define EXT_CSD_S_A_TIMEOUT	217
 
@@ -269,10 +268,6 @@ struct _mmc_csd {
 
 #define EXT_CSD_CARD_TYPE_26	(1<<0)	/* Card can run at 26MHz */
 #define EXT_CSD_CARD_TYPE_52	(1<<1)	/* Card can run at 52MHz */
-#define EXT_CSD_CARD_TYPE_DUAL_52_1830	(1<<2)
-	/* Dual Data Rate, @ 52MHz, 1.8V or 3V I/O */
-#define EXT_CSD_CARD_TYPE_DUAL_52_12	(1<<3)
-	/* Dual Data Rate, @ 52MHz, 1.2V I/O */
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
