@@ -209,8 +209,6 @@ int omap34xx_isp_ccdc_config(void *userspace_add);
 
 void ispccdc_set_wenlog(u32 wenlog);
 
-void ispccdc_set_dcsub(u32 dcsub);
-
 void ispccdc_set_raw_offset(enum ispccdc_raw_fmt);
 
 void ispccdc_request_lsc_enable(int enable);

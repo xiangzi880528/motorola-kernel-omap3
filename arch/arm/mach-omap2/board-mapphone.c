@@ -1460,11 +1460,6 @@ static struct i2c_board_info __initdata
 		.platform_data = &mapphone_lis331dlh_data,
 	},
 	{
-		I2C_BOARD_INFO("kxtf9", 0x0F),
-		.platform_data = &mapphone_kxtf9_data,
-	},
-
-	{
 		I2C_BOARD_INFO(LD_LM3530_NAME, 0x38),
 		.platform_data = &omap3430_als_light_data,
 		.irq = OMAP_GPIO_IRQ(MAPPHONE_LM_3530_INT_GPIO),

@@ -1,4 +1,0 @@
-menuconfig OMAP2_DSS_DISPSW
-	tristate "OMAP2/3 DSS2 display panel switcher"
-	depends on OMAP2_DSS
-

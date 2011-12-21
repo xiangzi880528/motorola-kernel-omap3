@@ -89,7 +89,6 @@ static struct isp_ccdc {
 	u8 pm_state;
 	struct mutex mutexlock; /* For checking/modifying ccdc_inuse */
 	u32 wenlog;
-	u32 dcsub;
 	enum ispccdc_raw_fmt raw_fmt_in;
 
 	/* LSC related fields */
@@ -304,15 +303,14 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 
 	if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
 		void *n;
-		if (ispccdc_obj.lsc_table_new.size <
-			ispccdc_obj.lsc_config.size ||
+		if (ispccdc_obj.lsc_table_new.size < ispccdc_obj.lsc_config.size ||
 			ispccdc_obj.lsc_table_new.addr == PTR_FREE) {
 			if (ispccdc_obj.lsc_table_new.addr != PTR_FREE) {
 				ispmmu_vfree(ispccdc_obj.lsc_table_new.addr);
 				ispccdc_obj.lsc_table_new.size = 0;
 			}
 			ispccdc_obj.lsc_table_new.addr =
-				ispmmu_vmalloc(ispccdc_obj.lsc_config.size);
+					ispmmu_vmalloc(ispccdc_obj.lsc_config.size);
 			if (IS_ERR_VALUE(ispccdc_obj.lsc_table_new.addr)) {
 				/* Disable LSC if table can not be allocated */
 				ispccdc_obj.lsc_table_new.addr = PTR_FREE;
@@ -320,8 +318,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 				ret = -ENOMEM;
 				goto out;
 			}
-			ispccdc_obj.lsc_table_new.size =
-				ispccdc_obj.lsc_config.size;
+			ispccdc_obj.lsc_table_new.size = ispccdc_obj.lsc_config.size;
 		}
 		n = ispmmu_da_to_va(ispccdc_obj.lsc_table_new.addr);
 		if (copy_from_user(n, ccdc_struct->lsc,
@@ -332,21 +329,10 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 		ispccdc_obj.update_lsc_table = 1;
 	}
 
-	if (ISP_ABS_CCDC_DCSUB & ccdc_struct->flag) {
-		if (ISP_ABS_CCDC_DCSUB & ccdc_struct->update) {
-			if (ccdc_struct->dcsub != ispccdc_obj.dcsub) {
-				ispccdc_obj.dcsub = ccdc_struct->dcsub;
-				isp_reg_writel(ispccdc_obj.dcsub,
-						OMAP3_ISP_IOMEM_CCDC,
-						ISPCCDC_DCSUB);
-			}
-		} else
-			ccdc_struct->dcsub = ispccdc_obj.dcsub;
-	}
-
 	if (ispccdc_obj.update_lsc_config) {
-		if (ispccdc_obj.pm_state == 0)
+		if (ispccdc_obj.pm_state == 0) {
 			ispccdc_setup_lsc();
+		}
 	}
 
 	if (ISP_ABS_CCDC_COLPTN & ccdc_struct->update)
@@ -375,16 +361,6 @@ void ispccdc_set_wenlog(u32 wenlog)
 	ispccdc_obj.wenlog = wenlog;
 }
 EXPORT_SYMBOL(ispccdc_set_wenlog);
-
-/**
- * Set the value to be used for ISPCCDC_DCSUB.
- *  dcsub - Value of black level.
- */
-void ispccdc_set_dcsub(u32 dcsub)
-{
-	ispccdc_obj.dcsub = dcsub;
-}
-EXPORT_SYMBOL(ispccdc_set_dcsub);
 
 /**
  * ispccdc_set_raw_offset - Store the component order as component offset.
@@ -577,6 +553,8 @@ static void ispccdc_config_lsc(void)
 
 void ispccdc_lsc_state_handler(unsigned long status)
 {
+	unsigned long flags = 0;
+
 	switch (status) {
 	case LSC_DONE:
 		/* The only thing we update in config
@@ -589,8 +567,7 @@ void ispccdc_lsc_state_handler(unsigned long status)
 		/* If we have LSC prefetch error LSC enigne is block
 		 * and only way it can recover is sw reset of isp */
 		ispccdc_enable_lsc(0);
-		if (ispccdc_obj.lsc_request_enable == -1)
-			ispccdc_obj.lsc_request_enable = 1;
+		ispccdc_obj.lsc_request_enable = 1;
 	case LSC_PRE_COMP:
 		ispccdc_lsc_pref_comp_handler();
 		break;
@@ -623,11 +600,9 @@ void ispccdc_enable_lsc(u8 enable)
 		isp_reg_and(OMAP3_ISP_IOMEM_CCDC,
 			    ISPCCDC_LSC_CONFIG, ~ISPCCDC_LSC_ENABLE);
 
-		/*
 		isp_reg_and(OMAP3_ISP_IOMEM_MAIN,
 			   ISP_CTRL, ~(ISPCTRL_SBL_SHARED_RPORTB
 			   | ISPCTRL_SBL_RD_RAM_EN));
-		*/
 
 		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~(IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ |
@@ -852,7 +827,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syncif.vdpol = 0;
 		ispccdc_config_sync_if(syncif);
 		ispccdc_config_imgattr(colptn);
-		blkcfg.dcsubval = ispccdc_obj.dcsub;
+		blkcfg.dcsubval = 42;
 		ispccdc_config_black_clamp(blkcfg);
 		break;
 	case CCDC_YUV_SYNC:
@@ -1444,8 +1419,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 		ISPCCDC_FMT_VERT);
 
 	if (fmtcfg_val & ISPCCDC_FMTCFG_VPEN) {
-		/* Formatting applied by ISPCCDC_FMT_HORZ, */
-		/* ISPCCDC_FMT_VERT, VP */
+		/* Formatting applied by ISPCCDC_FMT_HORZ, ISPCCDC_FMT_VERT, VP */
 		isp_reg_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
 			OMAP3_ISP_IOMEM_CCDC,
 			ISPCCDC_VERT_START);
@@ -1464,15 +1438,13 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 			<< ISPCCDC_VERT_START_SLV0_SHIFT,
 			OMAP3_ISP_IOMEM_CCDC,
 			ISPCCDC_VERT_START);
-		isp_reg_writel((ispccdc_obj.ccdcout_h -
-			ispccdc_obj.ccdcin_hoffset - 1) <<
+		isp_reg_writel((ispccdc_obj.ccdcout_h - ispccdc_obj.ccdcin_hoffset - 1) <<
 			ISPCCDC_VERT_LINES_NLV_SHIFT,
 			OMAP3_ISP_IOMEM_CCDC,
 			ISPCCDC_VERT_LINES);
 		isp_reg_writel((ispccdc_obj.ccdcin_woffset
 			<< ISPCCDC_HORZ_INFO_SPH_SHIFT) |
-			((ispccdc_obj.ccdcout_w -
-			ispccdc_obj.ccdcin_woffset) <<
+			((ispccdc_obj.ccdcout_w - ispccdc_obj.ccdcin_woffset) <<
 			ISPCCDC_HORZ_INFO_NPH_SHIFT),
 			OMAP3_ISP_IOMEM_CCDC,
 			ISPCCDC_HORZ_INFO);
@@ -1606,6 +1578,7 @@ void ispccdc_lsc_pref_comp_handler(void)
 
 	isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 		    ~IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ);
+	__ispccdc_enable(1);
 
 	spin_unlock_irqrestore(&ispccdc_obj.lock, flags);
 }
@@ -1613,9 +1586,9 @@ void ispccdc_lsc_pref_comp_handler(void)
 static void __ispccdc_enable(u8 enable)
 {
 	if (enable) {
-		int enable_lsc = (ispccdc_obj.ccdc_inpfmt == CCDC_RAW &&
+		int enable_lsc = ispccdc_obj.ccdc_inpfmt == CCDC_RAW &&
 		    ispccdc_obj.lsc_request_enable == 1 &&
-		    ispccdc_validate_config_lsc(&ispccdc_obj.lsc_config) == 0);
+		    ispccdc_validate_config_lsc(&ispccdc_obj.lsc_config) == 0;
 		if (enable_lsc) {
 			/* Defer CCDC enablement for
 			 * when the prefetch is completed. */
@@ -1625,15 +1598,11 @@ static void __ispccdc_enable(u8 enable)
 				   IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ);
 			ispccdc_enable_lsc(1);
 			ispccdc_obj.lsc_request_enable = -1;
+			return;
 		}
-	} else if (ispccdc_obj.lsc_request_enable == 0 &&
-					!ispccdc_lsc_busy()) {
+	} else if (ispccdc_obj.lsc_request_enable == 0) {
 		ispccdc_enable_lsc(0);
 		ispccdc_obj.lsc_request_enable = -1;
-
-		isp_reg_and(OMAP3_ISP_IOMEM_MAIN,
-			   ISP_CTRL, ~(ISPCTRL_SBL_SHARED_RPORTB
-			   | ISPCTRL_SBL_RD_RAM_EN));
 	}
 	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
 		       enable ? ISPCCDC_PCR_EN : 0);
@@ -1657,8 +1626,9 @@ EXPORT_SYMBOL(ispccdc_enable);
  **/
 void ispccdc_suspend(void)
 {
-	if (ispccdc_obj.pm_state)
+	if (ispccdc_obj.pm_state) {
 		__ispccdc_enable(0);
+	}
 }
 EXPORT_SYMBOL(ispccdc_suspend);
 
@@ -1667,8 +1637,9 @@ EXPORT_SYMBOL(ispccdc_suspend);
  **/
 void ispccdc_resume(void)
 {
-	if (ispccdc_obj.pm_state)
+	if (ispccdc_obj.pm_state) {
 		__ispccdc_enable(1);
+	}
 }
 EXPORT_SYMBOL(ispccdc_resume);
 
@@ -1833,7 +1804,6 @@ int __init isp_ccdc_init(void)
 	ispccdc_config_crop(0, 0, 0, 0);
 	mutex_init(&ispccdc_obj.mutexlock);
 
-	ispccdc_obj.dcsub = 0;
 	ispccdc_obj.update_lsc_config = 0;
 	ispccdc_obj.lsc_request_enable = -1;
 	ispccdc_obj.lsc_enable = 0;

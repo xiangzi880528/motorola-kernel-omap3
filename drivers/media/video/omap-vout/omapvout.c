@@ -70,46 +70,7 @@ const static struct v4l2_fmtdesc omap2_formats[] = {
 
 #define NUM_OUTPUT_FORMATS (sizeof(omap2_formats)/sizeof(omap2_formats[0]))
 
-/* This is a way to allow other components to force a desired rotation.
- * This will take effect when streaming is next enabled.
- */
-struct omapvout_override {
-	int dirty;
-	int force_rotation_dirty;
-	int force_rotation_enable;
-	int forced_rotation;
-	int client_rotation;
-};
-
-#define NUM_PLANES (3)
-static struct omapvout_override gOverride[NUM_PLANES];
-
 /*=== Local Functions ==================================================*/
-
-static void omapvout_chk_overrides(struct omapvout_device *vout)
-{
-	struct omapvout_override *ovr;
-
-	ovr = &gOverride[vout->id];
-
-	if (!ovr->dirty)
-		return;
-
-	if (ovr->force_rotation_dirty) {
-		ovr->force_rotation_dirty = 0;
-		if (ovr->force_rotation_enable) {
-			ovr->client_rotation = vout->rotation;
-			vout->rotation = ovr->forced_rotation;
-		} else {
-			vout->rotation = ovr->client_rotation;
-		}
-		printk(KERN_ERR "omapvout_chk_overrides/%d/%d/%d\n", \
-			ovr->force_rotation_enable, \
-			ovr->forced_rotation, ovr->client_rotation);
-	}
-
-	ovr->dirty = 0;
-}
 
 static int omapvout_crop_to_size(struct v4l2_rect *rect, int w, int h)
 {
@@ -266,41 +227,6 @@ static void omapvout_free_resources(struct omapvout_device *vout)
 	kfree(vout);
 }
 
-/*=== Public Kernel Functions =========================================*/
-
-int omapvout_force_rotation(int plane, int enable, int rotation)
-{
-	struct omapvout_override *ovr;
-	int en;
-
-	if (plane < 0 || plane >= NUM_PLANES) {
-		printk(KERN_ERR "Invalid plane (%d)\n", plane);
-		return -1;
-	}
-
-	ovr = &gOverride[plane];
-	if (ovr->force_rotation_enable == enable &&
-	    ovr->forced_rotation == rotation)
-		return 0;
-
-	en = (enable) ? 1 : 0;
-	if (en) {
-		if (rotation < 0 || rotation > 3) {
-			printk(KERN_ERR "Invalid rotation (%d)\n", rotation);
-			return -1;
-		}
-
-		ovr->forced_rotation = rotation;
-	}
-
-	ovr->force_rotation_dirty = 1;
-	ovr->force_rotation_enable = en;
-	ovr->dirty = 1;
-
-	return 0;
-}
-EXPORT_SYMBOL(omapvout_force_rotation);
-
 /*=== V4L2 Interface Functions =========================================*/
 
 static int omapvout_open(struct file *file)
@@ -314,7 +240,7 @@ static int omapvout_open(struct file *file)
 	vout = video_drvdata(file);
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -334,7 +260,7 @@ static int omapvout_open(struct file *file)
 	DBG("Overlay Display %dx%d\n", w, h);
 
 	if (w == 0 || h == 0) {
-		printk(KERN_ERR "Invalid display resolution\n");
+		DBG("Invalid display resolution\n");
 		rc = -EINVAL;
 		goto failed;
 	}
@@ -372,8 +298,6 @@ static int omapvout_open(struct file *file)
 
 	vout->mmap_cnt = 0;
 
-	omapvout_chk_overrides(vout);
-
 	mutex_unlock(&vout->mtx);
 
 	file->private_data = vout;
@@ -394,7 +318,7 @@ static int omapvout_release(struct file *file)
 	vout = video_drvdata(file);
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -431,7 +355,7 @@ static int omapvout_mmap(struct file *file, struct vm_area_struct *vma)
 	vout = video_drvdata(file);
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -534,7 +458,7 @@ static int omapvout_vidioc_g_fmt_vid_overlay(struct file *file, void *priv,
 	struct v4l2_window *win = &f->fmt.win;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -565,7 +489,7 @@ static int omapvout_vidioc_g_fmt_vid_out(struct file *file, void *priv,
 	struct v4l2_pix_format *pix = &f->fmt.pix;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -587,7 +511,7 @@ static int omapvout_vidioc_try_fmt_vid_overlay(struct file *file, void *priv,
 	int rc;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -608,7 +532,7 @@ static int omapvout_vidioc_try_fmt_vid_out(struct file *file, void *priv,
 	int rc;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -629,7 +553,7 @@ static int omapvout_vidioc_s_fmt_vid_overlay(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -639,8 +563,6 @@ static int omapvout_vidioc_s_fmt_vid_overlay(struct file *file, void *priv,
 		rc = -EBUSY;
 		goto failed;
 	}
-
-	omapvout_chk_overrides(vout);
 
 	rc = omapvout_try_window(vout, win);
 	if (rc != 0)
@@ -669,7 +591,7 @@ static int omapvout_vidioc_s_fmt_vid_out(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -679,8 +601,6 @@ static int omapvout_vidioc_s_fmt_vid_out(struct file *file, void *priv,
 		rc = -EBUSY;
 		goto failed;
 	}
-
-	omapvout_chk_overrides(vout);
 
 	rc = omapvout_try_pixel_format(vout, pix);
 	if (rc != 0)
@@ -711,7 +631,7 @@ static int omapvout_vidioc_cropcap(struct file *file, void *priv,
 	enum v4l2_buf_type type = ccap->type;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -742,7 +662,7 @@ static int omapvout_vidioc_g_crop(struct file *file, void *priv,
 	struct omapvout_device *vout = priv;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -766,7 +686,7 @@ static int omapvout_vidioc_s_crop(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -779,8 +699,6 @@ static int omapvout_vidioc_s_crop(struct file *file, void *priv,
 		rc = -EBUSY;
 		goto failed;
 	}
-
-	omapvout_chk_overrides(vout);
 
 	rc = omapvout_try_crop(vout, &rect);
 	if (rc != 0)
@@ -805,7 +723,7 @@ static int omapvout_vidioc_reqbufs(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -822,7 +740,7 @@ static int omapvout_vidioc_reqbufs(struct file *file, void *priv,
 
 	/* Don't allow new buffers when some are still mapped */
 	if (vout->mmap_cnt) {
-		printk(KERN_ERR "Buffers are still mapped\n");
+		DBG("Buffers are still mapped\n");
 		rc = -EBUSY;
 		goto failed;
 	}
@@ -846,7 +764,7 @@ static int omapvout_vidioc_querybuf(struct file *file, void *priv,
 	struct omapvout_device *vout = priv;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -860,15 +778,14 @@ static int omapvout_vidioc_qbuf(struct file *file, void *priv,
 	struct omapvout_device *vout = priv;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
 	DBG("Q'ing Frame %d\n", b->index);
 
 	mutex_lock(&vout->mtx);
-	omapvout_chk_overrides(vout);
-	rc = videobuf_qbuf(&vout->queue, b);
+        rc = videobuf_qbuf(&vout->queue, b);
 	mutex_unlock(&vout->mtx);
 
 	return rc;
@@ -898,13 +815,11 @@ static int omapvout_vidioc_streamon(struct file *file, void *priv,
 	int rc;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
 	mutex_lock(&vout->mtx);
-
-	omapvout_chk_overrides(vout);
 
 	/* Not sure how else to do this.  We can't truly validate the
 	 * configuration until all of the pieces have been provided, like
@@ -914,13 +829,13 @@ static int omapvout_vidioc_streamon(struct file *file, void *priv,
 	 */
 	rc = omapvout_validate_cfg(vout);
 	if (rc) {
-		printk(KERN_ERR "Configuration Validation Failed\n");
+		DBG("Configuration Validation Failed\n");
 		goto failed;
 	}
 
 	rc = omapvout_dss_enable(vout);
 	if (rc) {
-		printk(KERN_ERR "DSS Enable Failed\n");
+		DBG("DSS Enable Failed\n");
 		goto failed;
 	}
 
@@ -941,7 +856,7 @@ static int omapvout_vidioc_streamoff(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -981,7 +896,7 @@ static int omapvout_vidioc_g_ctrl(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -1012,7 +927,7 @@ static int omapvout_vidioc_s_ctrl(struct file *file, void *priv,
 	int rc = 0;
 
 	if (vout == NULL) {
-		printk(KERN_ERR "Invalid device\n");
+		DBG("Invalid device\n");
 		return -ENODEV;
 	}
 
@@ -1030,19 +945,13 @@ static int omapvout_vidioc_s_ctrl(struct file *file, void *priv,
 		} else if (v == 0 || v == 90 || v == 180 || v == 270) {
 			vout->rotation = v / 90;
 		} else {
-			printk(KERN_ERR "Invalid rotation %d\n", v);
+			DBG("Invalid rotation %d\n", v);
 			rc = -ERANGE;
-		}
-		if (rc == 0 && gOverride[vout->id].force_rotation_enable) {
-			gOverride[vout->id].client_rotation = vout->rotation;
-			vout->rotation = gOverride[vout->id].forced_rotation;
-			gOverride[vout->id].force_rotation_dirty = 0;
 		}
 		break;
 	case V4L2_CID_BG_COLOR:
 		if (v < 0 || v > 0xFFFFFF) {
-			printk(KERN_ERR "Invalid BG color 0x%08lx\n",
-							(unsigned long) v);
+			DBG("Invalid BG color 0x%08lx\n", (unsigned long) v);
 			rc = -ERANGE;
 		} else {
 			vout->bg_color = v;
@@ -1189,7 +1098,7 @@ static int __init omapvout_probe_device(struct omap_vout_config *cfg,
 
 	rc = omapvout_dss_init(vout, plane);
 	if (rc != 0) {
-		printk(KERN_ERR "DSS init failed\n");
+		printk(KERN_INFO "DSS init failed\n");
 		kfree(vout);
 		goto err0;
 	}
@@ -1209,8 +1118,6 @@ static int __init omapvout_probe_device(struct omap_vout_config *cfg,
 	}
 
 	vout->id = plane;
-
-	memset(gOverride, 0, sizeof(gOverride));
 
 	return 0;
 
@@ -1268,7 +1175,7 @@ static int __init omapvout_probe(struct platform_device *pdev)
 		rc = omapvout_probe_device(cfg, bp, planes[i],
 						cfg->device_ids[i]);
 		if (rc) {
-			printk(KERN_ERR "omapvout_probe %d failed\n", (i + 1));
+			DBG("omapvout_probe %d failed\n", (i + 1));
 			return rc;
 		}
 	}
@@ -1316,7 +1223,7 @@ static void __exit omapvout_exit(void)
 	platform_driver_unregister(&omapvout_driver);
 }
 
-device_initcall_sync(omapvout_init);
+module_init(omapvout_init);
 module_exit(omapvout_exit);
 
 MODULE_AUTHOR("Motorola");

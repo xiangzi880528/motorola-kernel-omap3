@@ -56,6 +56,7 @@ include/linux/version.h
 include/linux/utsrelease.h
 include/linux/bounds.h
 include/generated
+bootimg/zImage
 
 # stgit generated dirs
 patches-*
