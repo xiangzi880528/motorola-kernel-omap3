@@ -1,5 +1,5 @@
 #
-ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr -Idrivers/gpu/pvr/omap3 \
+ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr -Idrivers/gpu/pvr/omap3430 \
 	-DANDROID \
 	-DPVR_BUILD_DIR="\"omap3430_android\"" \
 	-DSGX_DYNAMIC_TIMING_INFO \
@@ -32,6 +32,9 @@ ccflags-$(CONFIG_PVR_APM) += -DSUPPORT_ACTIVE_POWER_MANAGEMENT
 ccflags-$(CONFIG_SGX_EDM_TRACING) += -DPVRSRV_USSE_EDM_STATUS_DEBUG
 
 ccflags-$(CONFIG_SGX_MK_TRACE) += -DPVRSRV_DUMP_MK_TRACE
+
+ccflags-$(CONFIG_SGX_RELEASE_LOGGING) += -DPVRSRV_NEED_PVR_DPF \
+					 -DPVRSRV_NEED_PVR_ASSERT
 
 ccflags-$(CONFIG_SGX_BUILD_RELEASE) += \
 	-DPVR_BUILD_TYPE="\"release\""  -DRELEASE
@@ -79,8 +82,8 @@ pvr_common-y := \
 	bridged_pvr_bridge.o \
 	perproc.o \
 	lists.o \
-	omap3/sysconfig.o \
-	omap3/sysutils.o
+	omap3430/sysconfig.o \
+	omap3430/sysutils.o
 
 
 sgx-y    :=  \

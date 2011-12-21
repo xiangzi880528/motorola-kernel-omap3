@@ -432,6 +432,7 @@ PVRSRV_BRIDGE_SGX_DOKICK_RETURN_RESULT:
 				  0);
 		
 	}
+
 	return ret;
 }
 
