@@ -375,12 +375,14 @@ config SYSPANIC
 	tristate "SYSPANIC driver used to detect BP panics"
 	default n
 
+config MODEM_PM_DRIVER
+	tristate "Motorola modem pm driver"
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
 source "drivers/misc/ts27010mux/Kconfig"
-source "drivers/misc/modem_pm_driver/Kconfig
 source "drivers/misc/netmux/Kconfig"
-source "drivers/misc/netmux_linkdriver/Kconfig"
 
 endif # MISC_DEVICES

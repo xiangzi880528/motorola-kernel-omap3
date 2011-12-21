@@ -20,6 +20,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
@@ -623,44 +624,9 @@ struct platform_device sim_device = {
 	.id = 1,
 };
 
-static bool sim_available = 1;
-
-bool is_sim_available(void)
-{
-	return sim_available ? 1 : 0;
-}
-EXPORT_SYMBOL(is_sim_available);
-
 static void mapphone_sim_init(void)
 {
-#ifdef CONFIG_ARM_OF
-	struct device_node *node;
-	const void *prop;
-
-	/*
-	 * load sim driver if failure to open DT,
-	 * default consumption: sim card is available.
-	 */
-	node = of_find_node_by_path(DT_PATH_SIM_DEV);
-	if (node) {
-		prop = of_get_property(node,
-			DT_PROP_SIM_DEV_AVAILABILITY, NULL);
-		if (prop)
-			sim_available = *(bool *)prop;
-		else
-			printk(KERN_ERR"Read property %s error!\n",
-				DT_PROP_SIM_DEV_AVAILABILITY);
-		of_node_put(node);
-	}
-#endif
-
-	printk(KERN_INFO"SIM device %s.\n",
-		sim_available ? "enabled" : "disabled");
-
-	if (!sim_available)
-		return;
-	if (platform_device_register(&sim_device))
-		printk(KERN_ERR" SIM device registration failed.\n");
+	platform_device_register(&sim_device);
 }
 
 static int __init mapphone_audio_init(void)
@@ -1377,17 +1343,6 @@ static struct lm3530_platform_data omap3430_als_light_data = {
 	.lens_loss_coeff = 6,
 };
 
-static struct lm3554_platform_data mapphone_camera_flash_3554 = {
-	.flags	= 0x0,
-	.torch_brightness_def = 0xa0,
-	.flash_brightness_def = 0x78,
-	.flash_duration_def = 0x28,
-	.config_reg_1_def = 0xe0,
-	.config_reg_2_def = 0xf0,
-	.vin_monitor_def = 0x00,
-	.gpio_reg_def = 0x0,
-};
-
 static struct lm3559_platform_data mapphone_camera_flash_3559;
 
 static struct lm3559_platform_data mapphone_camera_flash_3559 = {
@@ -1468,10 +1423,6 @@ static struct i2c_board_info __initdata
 
 static struct i2c_board_info __initdata
 	mapphone_i2c_bus3_master_board_info[] = {
-	{
-		I2C_BOARD_INFO("lm3554_led", 0x53),
-		.platform_data = &mapphone_camera_flash_3554,
-	},
 
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 	{
@@ -1570,12 +1521,6 @@ static struct i2c_board_info *get_board_info
 
 void initialize_device_specific_data(void)
 {
-#ifdef CONFIG_ARM_OF
-	/* Check camera flash led type */
-	/* LM3554 */
-	mapphone_camera_flash_3554.flags = 1;
-
-#endif /*CONFIG_ARM_OF*/
 }
 
 static int initialize_i2c_bus_info
