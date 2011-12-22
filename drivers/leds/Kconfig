@@ -242,36 +242,6 @@ config LEDS_SHOLES
 	help
 	  This option enables support for LEDs on Sholes.
 
-config LEDS_BUTTON
-        tristate "LED Support for Button lighting device"
-        depends on LEDS_CLASS
-        help
-          This option enables support for Button LEDs.
-
-config LEDS_DISPLAY
-        tristate "LED Support for Display lighting device"
-        depends on LEDS_CLASS
-        help
-          This option enables support for display LEDs.
-
-config LEDS_KPAD
-        tristate "LED Support for Keypad lighting device"
-        depends on LEDS_CLASS
-        help
-          This option enables support for Keypad LEDs.
-
-config LEDS_AF_LED
-        tristate "LED Support for AF LED operatiion"
-        depends on LEDS_CLASS
-        help
-          This option enables support for LEDs connected to CPCAP.
-
-config LEDS_FLASH_RESET
-        tristate "LED Support for FLASH_RESET pin control"
-        depends on LEDS_CLASS && LEDS_BD7885
-        help
-          This option enables support for LED's FLASH_RESET pin operation.
-
 config LEDS_LM3554
 	tristate "LM3554 driver"
 	depends on LEDS_CLASS && I2C && MFD_CPCAP
