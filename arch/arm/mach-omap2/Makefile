@@ -106,8 +106,8 @@ obj-$(CONFIG_MACH_MAPPHONE)             += board-mapphone.o \
                                            board-mapphone-keypad.o \
                                            board-mapphone-wifi.o \
                                            board-mapphone-gpio.o \
-                                           board-mapphone-mmcprobe.o
-#                                          board-mapphone-camera.o \
+                                           board-mapphone-mmcprobe.o \
+											board-mapphone-camera.o
 obj-$(CONFIG_MACH_NOKIA_RX51)		+= board-rx51.o \
 					   board-rx51-sdram.o \
 					   board-rx51-peripherals.o \

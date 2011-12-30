@@ -25,12 +25,7 @@
 #include "hp3a_common.h"
 #include "hp3a_queue.h"
 #include "hp3a_ispreg.h"
-#include "hp3a.h"
-#if defined(CONFIG_VIDEO_OLDOMAP3)
- #include "../oldomap34xxcam.h"
-#else
- #include "../omap34xxcam.h"
-#endif
+#include "../oldomap34xxcam.h"
 #include "ispccdc.h"
 
 struct hp3a_context g_tc;
@@ -144,17 +139,7 @@ void hp3a_framework_stop(struct hp3a_fh *fh)
 	int i;
 	unsigned long irqflags = 0;
 
-	hp3a_stream_off();
-	wait_event_interruptible_timeout(g_tc.stats_done,
-		(g_tc.hist_done == 1), msecs_to_jiffies(8));
-
 	spin_lock_irqsave(&g_tc.stats_lock, irqflags);
-	g_tc.hist_hw_configured = 0;
-	g_tc.af_hw_configured = 0;
-	g_tc.raw_hw_configured = 0;
-	g_tc.hist_hw_enable = 0;
-	g_tc.hist_done = 0;
-	g_tc.af_hw_enable = 0;
 
 	/* Need to flush queue. */
 	hp3a_flush_queue(&g_tc.sensor_write_queue);
@@ -178,6 +163,7 @@ void hp3a_framework_stop(struct hp3a_fh *fh)
 	g_tc.histogram_buffer = NULL;
 	g_tc.af_buffer  = NULL;
 	g_tc.raw_buffer  = NULL;
+
 	spin_unlock_irqrestore(&g_tc.stats_lock, irqflags);
 
 	/* Release any task waiting for stats. */
@@ -207,14 +193,17 @@ int hp3a_set_sensor_param(struct hp3a_sensor_param *param, struct hp3a_fh *fh)
 			ret = 0;
 
 			/* queue fps & exposure together */
-			if (param->fps && g_tc.sensor_requested.fps != param->fps) {
+			if (param->fps && g_tc.sensor_requested.fps != \
+					param->fps) {
 				g_tc.sensor_requested.fps = param->fps;
 				sensor_param.fps = param->fps;
 			}
 
 			if (param->exposure &&
-				abs(g_tc.sensor_requested.exposure - param->exposure) > 2) {
-				g_tc.sensor_requested.exposure = param->exposure;
+					abs(g_tc.sensor_requested.exposure - \
+					param->exposure) > 2) {
+				g_tc.sensor_requested.exposure = \
+					param->exposure;
 				sensor_param.exposure = param->exposure;
 			}
 
@@ -225,7 +214,8 @@ int hp3a_set_sensor_param(struct hp3a_sensor_param *param, struct hp3a_fh *fh)
 			}
 
 			if (param->gain &&
-				abs(g_tc.sensor_requested.gain - param->gain) > 2) {
+				abs(g_tc.sensor_requested.gain - \
+					param->gain) > 2) {
 				g_tc.sensor_requested.gain = param->gain;
 				sensor_param.gain = param->gain;
 				sensor_param.exposure = 0;
@@ -247,7 +237,8 @@ int hp3a_set_sensor_param(struct hp3a_sensor_param *param, struct hp3a_fh *fh)
 			sensor_settings.gain = param->gain;
 			sensor_settings.fps = param->fps;
 			sensor_settings.flags = (OMAP34XXCAM_SET_GAIN | \
-						OMAP34XXCAM_SET_EXPOSURE);
+						OMAP34XXCAM_SET_EXPOSURE | \
+						OMAP34XXCAM_SET_FPS);
 
 			/**
 			* Write and read sensor settings.
@@ -307,9 +298,8 @@ int hp3a_collect_statistics(struct hp3a_statistics *stat)
 	stat->exposure = 0;
 	stat->gain = 0;
 
-	if (wait_for_completion_timeout(
-		&g_tc.frame_done, msecs_to_jiffies(4)) != 0 &&
-		g_tc.v4l2_streaming == 1) {
+	if (wait_for_completion_interruptible(&g_tc.frame_done) == 0 &&
+						g_tc.v4l2_streaming == 1) {
 		g_tc.frame_done.done = 0;
 
 		/* Wait for all stats tasks to be done. */
@@ -341,7 +331,7 @@ int hp3a_collect_statistics(struct hp3a_statistics *stat)
 
 		/* Histogram. */
 		if (g_tc.histogram_buffer != NULL) {
-			if (g_tc.hist_done == 1) {
+			if (g_tc.hist_done  == 1) {
 				stat->hist_stat_index = \
 					g_tc.histogram_buffer->index;
 			} else {
@@ -353,8 +343,6 @@ int hp3a_collect_statistics(struct hp3a_statistics *stat)
 
 		g_tc.hist_done = 0;
 		spin_unlock_irqrestore(&g_tc.stats_lock, irqflags);
-	} else {
-		stat->frame_id = g_tc.frame_count;
 	}
 
 	return 0;
@@ -373,7 +361,7 @@ void hp3a_update_stats_readout_done(void)
 	struct hp3a_internal_buffer *ibuffer;
 	struct hp3a_sensor_param_internal sensor_param;
 
-	if (unlikely(g_tc.v4l2_streaming == 0)) {
+	if (g_tc.v4l2_streaming == 0) {
 		hp3a_disable_histogram();
 		hp3a_disable_af();
 		return;
@@ -424,17 +412,21 @@ void hp3a_update_stats_readout_done(void)
 	for (i = QUEUE_COUNT(g_tc.sensor_read_queue); i--;) {
 		if (hp3a_dequeue(&g_tc.sensor_read_queue, &sensor_param) == 0) {
 			if (sensor_param.frame_id == g_tc.frame_count) {
-				if (sensor_param.exposure == (u32)-1) {
+				if (sensor_param.exposure == -1) {
 					g_tc.sensor_stats.exposure = 0;
 					allow_exp_update = false;
-				} else if (sensor_param.exposure && allow_exp_update) {
-					g_tc.sensor_stats.exposure = sensor_param.exposure;
+				} else if (sensor_param.exposure && \
+						allow_exp_update) {
+					g_tc.sensor_stats.exposure = \
+						sensor_param.exposure;
 				}
-				if (sensor_param.gain == (u16)-1) {
+				if (sensor_param.gain == -1) {
 					g_tc.sensor_stats.gain = 0;
 					allow_gain_update = false;
-				} else if (sensor_param.gain && allow_gain_update) {
-					g_tc.sensor_stats.gain = sensor_param.gain;
+				} else if (sensor_param.gain && \
+						allow_gain_update) {
+					g_tc.sensor_stats.gain = \
+						sensor_param.gain;
 				}
 			} else if (sensor_param.frame_id > g_tc.frame_count) {
 				hp3a_enqueue(&g_tc.sensor_read_queue,
@@ -484,7 +476,7 @@ void hp3a_update_stats_pipe_done(void)
 					hp3a_enable_raw(ibuffer->isp_addr);
 					ibuffer->type = BAYER;
 					hp3a_enqueue(&g_tc.ready_stats_queue,
-					&ibuffer);
+						&ibuffer);
 				}
 			}
 		}
@@ -531,7 +523,7 @@ static void hp3a_task(struct work_struct *work)
 	 * Setup exposure and gain for next frame.
 	 */
 	if (hp3a_dequeue(&g_tc.sensor_write_queue,
-			&sensor_param) == 0) {
+							&sensor_param) == 0) {
 		sensor_settings.exposure = sensor_param.exposure;
 		sensor_settings.gain = sensor_param.gain;
 		sensor_settings.fps = sensor_param.fps;
@@ -549,7 +541,7 @@ static void hp3a_task(struct work_struct *work)
 		 * Write and read sensor settings.
 		 */
 		omap34xxcam_sensor_settings(sensor_param.v4l2_dev,
-					&sensor_settings);
+			&sensor_settings);
 
 		if (g_tc.sensor_current.gain != sensor_settings.gain) {
 			if (g_tc.gain_sync > 1) {
@@ -566,7 +558,7 @@ static void hp3a_task(struct work_struct *work)
 			sensor_param.gain = sensor_settings.gain;
 			/* Queue new value for stats collecton. */
 			hp3a_enqueue_irqsave(&g_tc.sensor_read_queue,
-					&sensor_param);
+				&sensor_param);
 			/* Save new programmed in gain value. */
 			g_tc.sensor_current.gain = sensor_settings.gain;
 		}
@@ -587,7 +579,7 @@ static void hp3a_task(struct work_struct *work)
 			sensor_param.gain = 0;
 			/* Queue new value for stats collecton. */
 			hp3a_enqueue_irqsave(&g_tc.sensor_read_queue,
-					&sensor_param);
+				&sensor_param);
 			/* Save new programmed in exposure value. */
 			g_tc.sensor_current.exposure = sensor_settings.exposure;
 		}

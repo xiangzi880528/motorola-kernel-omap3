@@ -80,7 +80,7 @@
 #include <linux/adp5588_keypad.h>
 #endif
 
-#ifdef CONFIG_VIDEO_OMAP3
+#ifdef CONFIG_VIDEO_OLDOMAP3
 #include <media/v4l2-int-device.h>
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 #include <media/mt9p012.h>
@@ -91,79 +91,13 @@
 #if defined(CONFIG_VIDEO_OV5650) || defined(CONFIG_VIDEO_OV5650_MODULE)
 #include <media/ov5650.h>
 #endif
-
-#if defined(CONFIG_LEDS_BD7885)
 #include <linux/leds-bd7885.h>
-#endif
-#if defined(CONFIG_LEDS_BU9847)
 #include <linux/leds-bu9847.h>
-#endif
 
 #ifdef CONFIG_VIDEO_OMAP3_HPLENS
 #include <../drivers/media/video/hplens.h>
 #endif
 #endif
-
-////////////////////////////////////////////////////////////////////////
-// Adding by no change device tree
-/* Display panel Node */
-#define DT_PROP_TOUCH_I2C_ADDRESS       "i2c,address"
-#define DT_PROP_TOUCH_BOOT_I2C_ADDRESS  "boot_i2c_address"
-#define DT_PROP_TOUCH_KEYMAP		"touch_key_map"
-#define DT_PROP_TOUCH_FLAGS		"touchobp-flags"
-#define DT_PROP_TOUCH_CHECKSUM		"nv_checksum"
-#define DT_PROP_TOUCH_ABS_MIN_X		"abs_min_x"
-#define DT_PROP_TOUCH_ABS_MAX_X		"abs_max_x"
-#define DT_PROP_TOUCH_ABS_MIN_Y		"abs_min_y"
-#define DT_PROP_TOUCH_ABS_MAX_Y		"abs_max_y"
-#define DT_PROP_TOUCH_ABS_MIN_P		"abs_min_p"
-#define DT_PROP_TOUCH_ABS_MAX_P		"abs_max_p"
-#define DT_PROP_TOUCH_ABS_MIN_W		"abs_min_w"
-#define DT_PROP_TOUCH_ABS_MAX_W		"abs_max_w"
-#define DT_PROP_TOUCH_FUZZ_X		"fuzz_x"
-#define DT_PROP_TOUCH_FUZZ_Y		"fuzz_y"
-#define DT_PROP_TOUCH_FUZZ_P		"fuzz_p"
-#define DT_PROP_TOUCH_FUZZ_W		"fuzz_w"
-#define DT_PROP_TOUCH_KEY_ARRAY_MAP	"key_array_map"
-#define DT_PROP_TOUCH_KEY_ARRAY_COUNT	"key_array_count"
-#define DT_PROP_TOUCH_T7		"obj_t7"	/* power_cfg */
-#define DT_PROP_TOUCH_T8		"obj_t8"	/* acquire_cfg */
-#define DT_PROP_TOUCH_T9		"obj_t9"	/* multi_touch_cfg */
-#define DT_PROP_TOUCH_T15		"obj_t15"	/* key_array */
-#define DT_PROP_TOUCH_T17		"obj_t17"	/* linear_tbl_cfg */
-#define DT_PROP_TOUCH_T18		"obj_t18"	/* comms_config_cfg */
-#define DT_PROP_TOUCH_T19		"obj_t19"	/* gpio_pwm_cfg */
-#define DT_PROP_TOUCH_T20		"obj_t20"	/* grip_suppression_cfg */
-#define DT_PROP_TOUCH_T22		"obj_t22"	/* noise_suppression_cfg */
-#define DT_PROP_TOUCH_T23		"obj_t23"	/* touch_proximity_cfg */
-#define DT_PROP_TOUCH_T24		"obj_t24"	/* one_touch_gesture_proc_cfg */
-#define DT_PROP_TOUCH_T25		"obj_t25"	/* self_test_cfg */
-#define DT_PROP_TOUCH_T27		"obj_t27"	/* two_touch_gesture_proc_cfg */
-#define DT_PROP_TOUCH_T28		"obj_t28"	/* cte_config_cfg */
-#define DT_PROP_TOUCH_T36		"obj_t36"	/* noise1_suppression_cfg */
-
-#define DT_LCD_BACKLIGHT	"/System@0/I2C@0/LCDBacklight@0"
-#define DT_PROP_POWERUP_GEN_CNFG	"power_up_gen_config"
-#define DT_PROP_GEN_CNFG	"gen_config"
-#define DT_PROP_ALS_CNFG	"als_config"
-
-#define DT_PROP_BRIGHTNESS_RAMP		"brightness_ramp"
-#define DT_PROP_ALS_ZONE_INFO		"als_zone_info"
-#define DT_PROP_ALS_RESISTOR_SEL    "als_resistor_sel"
-#define DT_PROP_BRIGHTNESS_CTRL		"brightness_control"
-#define DT_PROP_ZB0		"zone_boundary_0"
-#define DT_PROP_ZB1		"zone_boundary_1"
-#define DT_PROP_ZB2		"zone_boundary_2"
-#define DT_PROP_ZB3		"zone_boundary_3"
-#define DT_PROP_ZT0		"zone_target_0"
-#define DT_PROP_ZT1		"zone_target_1"
-#define DT_PROP_ZT2		"zone_target_2"
-#define DT_PROP_ZT3		"zone_target_3"
-#define DT_PROP_ZT4		"zone_target_4"
-#define DT_PROP_MANUAL_CURRENT		"manual_current"
-#define DT_PROP_UPPER_CURR_SEL		"upper_curr_sel"
-#define DT_PROP_LOWER_CURR_SEL		"lower_curr_sel"
-#define DT_PROP_LENS_LOSS_COEFF		"lens_loss_coeff"
 
 /* Feature Node */
 #define DT_HIGH_LEVEL_FEATURE	"/System@0/Feature@0"
@@ -744,142 +678,6 @@ static struct i2c_board_info __initdata mapphone_i2c_bus2_master_board_info[];
 
 static void mapphone_touch_init(void)
 {
-#ifdef CONFIG_ARM_OF
-	struct device_node *touch_node;
-	const void *touch_prop;
-	int len = 0;
-	const uint32_t *touch_val;
-
-	if ((touch_node = of_find_node_by_path(DT_PATH_TOUCH))) {
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_KEYMAP, &len)) \
-			&& len && (0 == len % sizeof(struct vkey))) {
-			mapphone_ts_platform_data.vkeys.count = len / sizeof(struct vkey);
-			mapphone_ts_platform_data.vkeys.keys = (struct vkey *)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_I2C_ADDRESS, &len))) {
-			mapphone_i2c_bus1_master_board_info[0].addr = *((int *)touch_prop);
-		}
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_FLAGS, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.flags = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MIN_X, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_min_x = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MAX_X, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_max_x = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MIN_Y, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_min_y = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MAX_Y, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_max_y = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MIN_P, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_min_p = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MAX_P, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_max_p = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MIN_W, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_min_w = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_ABS_MAX_W, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.abs_max_w = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_FUZZ_X, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.fuzz_x = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_FUZZ_Y, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.fuzz_y = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_FUZZ_P, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.fuzz_p = *touch_val;
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_FUZZ_W, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.fuzz_w = *touch_val;
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T15, &len))) {
-			mapphone_ts_platform_data.key_array.cfg = (struct qtm_touch_keyarray_cfg *)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_KEY_ARRAY_MAP, &len))) {
-			mapphone_ts_platform_data.key_array.keys = (struct qtouch_key *)touch_prop;
-		}
-
-		touch_val = of_get_property(touch_node, DT_PROP_TOUCH_KEY_ARRAY_COUNT, &len);
-		if (touch_val && len)
-			mapphone_ts_platform_data.key_array.num_keys = *touch_val;
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T7, &len))) {
-			mapphone_ts_platform_data.power_cfg = *(struct qtm_gen_power_cfg *)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T8, &len))) {
-			mapphone_ts_platform_data.acquire_cfg = *(struct qtm_gen_acquire_cfg *)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T9, &len))) {
-			mapphone_ts_platform_data.multi_touch_cfg = *(struct qtm_touch_multi_cfg *)touch_prop;
-		}
-
- 		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T17, &len))) {
-			mapphone_ts_platform_data.linear_tbl_cfg
-				= *(struct  qtm_proci_linear_tbl_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T19, &len))) {
-			mapphone_ts_platform_data.gpio_pwm_cfg
-				= *(struct  qtm_spt_gpio_pwm_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T20, &len))) {
-			mapphone_ts_platform_data.grip_suppression_cfg
-				= *(struct  qtm_proci_grip_suppression_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T22, &len))) {
-			mapphone_ts_platform_data.noise_suppression_cfg
-				= *(struct  qtm_procg_noise_suppression_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T24, &len))) {
-			mapphone_ts_platform_data.one_touch_gesture_proc_cfg
-				= *(struct  qtm_proci_one_touch_gesture_proc_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T25, &len))) {
-			mapphone_ts_platform_data.self_test_cfg
-				= *(struct  qtm_spt_self_test_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T27, &len))) {
-			mapphone_ts_platform_data.two_touch_gesture_proc_cfg
-				= *(struct  qtm_proci_two_touch_gesture_proc_cfg*)touch_prop;
-		}
-
-		if ((touch_prop = of_get_property(touch_node, DT_PROP_TOUCH_T28, &len))) {
-			mapphone_ts_platform_data.cte_config_cfg = *(struct  qtm_spt_cte_config_cfg*)touch_prop;
-		}
-
-		of_node_put(touch_node);
-	}
-#endif
-
 	gpio_request(MAPPHONE_TOUCH_RESET_N_GPIO, "mapphone touch reset");
 	gpio_direction_output(MAPPHONE_TOUCH_RESET_N_GPIO, 1);
 	omap_cfg_reg(H19_34XX_GPIO164_OUT);
@@ -1423,71 +1221,23 @@ static struct i2c_board_info __initdata
 
 static struct i2c_board_info __initdata
 	mapphone_i2c_bus3_master_board_info[] = {
-
-#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
-	{
-		I2C_BOARD_INFO("mt9p012", 0x36),
-		.platform_data = &mapphone_mt9p012_platform_data,
-	},
-#endif
-
-#ifdef CONFIG_VIDEO_OMAP3_HPLENS
 	{
 		I2C_BOARD_INFO("HP_GEN_LENS", 0x04),
 		.platform_data = &mapphone_hplens_platform_data,
 	},
-#endif
-
-#ifdef CONFIG_HDMI_TDA19989
-	{
-		I2C_BOARD_INFO("tda19989", 0x70),
-	},
-#endif
-
-#if CONFIG_KEYBOARD_ADP5588
-	{
-		I2C_BOARD_INFO(ADP5588_KEYPAD_NAME, ADP5588_I2C_ADDRESS),
-		.platform_data = &mapphone_adp5588_pdata,
-	},
-#endif
-
-#if defined(CONFIG_VIDEO_OV8810)
 	{
 		I2C_BOARD_INFO("ov8810", OV8810_I2C_ADDR),
 		.platform_data = &mapphone_ov8810_platform_data,
 	},
-#endif
-
-#ifdef CONFIG_VIDEO_OMAP3_HPLENS
 	{
 		I2C_BOARD_INFO("HP_GEN_LENS", 0x04),
 		.platform_data = &mapphone_hplens_platform_data,
 	},
-#endif
-
-#if defined(CONFIG_LEDS_BD7885)
 	{
 		I2C_BOARD_INFO(BD7885_DEVICE_NAME, BD7885_SLAVE_ADDR),
 	},
-#endif	/* CONFIG_LEDS_BD7885 */
-
-#if defined(CONFIG_LEDS_BU9847)
 	{
 		I2C_BOARD_INFO(BU9847_DEVICE_NAME, BU9847_SLAVE_ADDR),
-	},
-#endif/*CONFIG_LEDS_BU9847*/
-
-#ifdef CONFIG_KEYBOARD_ADP5588
-	{
-		I2C_BOARD_INFO(ADP5588_KEYPAD_NAME, ADP5588_I2C_ADDRESS),
-		.platform_data = &mapphone_adp5588_pdata,
-	},
-#endif
-	/* LM3559 must be the last element in the array,
-		new devices need to be added above */
-	{
-		I2C_BOARD_INFO("lm3559_led", 0x53),
-		.platform_data = &mapphone_camera_flash_3559,
 	},
 };
 
@@ -2710,7 +2460,7 @@ static void __init mapphone_init(void)
 	mapphone_als_init();
 	mapphone_panel_init();
 	mapphone_sensors_init();
-	//mapphone_camera_init();
+	mapphone_camera_init();
 	mapphone_touch_init();
 	mapphone_audio_init();
 	usb_musb_init();

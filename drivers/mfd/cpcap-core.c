@@ -146,8 +146,17 @@ static struct platform_device cpcap_rtc_device = {
 	.dev.platform_data = NULL,
 };
 
+#ifdef CONFIG_LEDS_AF_LED
+struct platform_device cpcap_af_led = {
+	.name		= LD_AF_LED_DEV,
+	.id		= -1,
+	.dev		= {
+		.platform_data  = NULL,
+	},
+};
+#endif
+
 static struct platform_device *cpcap_devices[] = {
-	&cpcap_uc_device,
 	&cpcap_adc_device,
 	&cpcap_key_device,
 	&cpcap_batt_device,
@@ -164,6 +173,10 @@ static struct platform_device *cpcap_devices[] = {
 #endif
 	&cpcap_3mm5_device,
 	&cpcap_rtc_device,
+	&cpcap_uc_device,
+#ifdef CONFIG_LEDS_AF_LED
+	&cpcap_af_led,
+#endif
 };
 
 static struct cpcap_device *misc_cpcap;
@@ -465,6 +478,18 @@ static int adc_ioctl(unsigned int cmd, unsigned long arg)
 
 	return retval;
 }
+
+#if defined(CONFIG_LEDS_FLASH_RESET)
+int cpcap_direct_misc_write(unsigned short reg, unsigned short value,\
+						unsigned short mask)
+{
+	int retval = -EINVAL;
+
+	retval = cpcap_regacc_write(misc_cpcap, reg, value, mask);
+
+	return retval;
+}
+#endif
 
 static int ioctl(struct inode *inode,
 		 struct file *file, unsigned int cmd, unsigned long arg)

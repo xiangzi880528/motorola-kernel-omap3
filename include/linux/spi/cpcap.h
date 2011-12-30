@@ -277,9 +277,6 @@ enum cpcap_reg {
 
 	CPCAP_REG_MAX		/* The largest valid register value. */
 	= CPCAP_REG_END,
-
-	CPCAP_REG_SIZE = CPCAP_REG_MAX + 1,
-	CPCAP_REG_UNUSED = CPCAP_REG_MAX + 2,
 };
 
 enum {
@@ -495,50 +492,6 @@ struct cpcap_adc_ato {
 	unsigned short atox_ps_factor_out;
 };
 
-struct cpcap_display_led {
-	unsigned int display_reg;
-	unsigned int display_mask;
-	unsigned int display_on;
-	unsigned int display_off;
-	unsigned int display_init;
-	unsigned int poll_intvl;
-};
-
-struct cpcap_button_led {
-	unsigned int button_reg;
-	unsigned int button_mask;
-	unsigned int button_on;
-	unsigned int button_off;
-};
-
-struct cpcap_kpad_led {
-	unsigned int kpad_reg;
-	unsigned int kpad_mask;
-	unsigned int kpad_on;
-	unsigned int kpad_off;
-};
-
-struct cpcap_rgb_led {
-	unsigned int rgb_reg;
-	unsigned int rgb_mask;
-	unsigned int rgb_on;
-	unsigned int rgb_off;
-};
-struct cpcap_als_data {
-	unsigned short lux_max;
-	unsigned short lux_min;
-	unsigned short als_max;
-	unsigned short als_min;
-};
-
-struct cpcap_leds {
-	struct cpcap_display_led display_led;
-	struct cpcap_button_led button_led;
-	struct cpcap_kpad_led kpad_led;
-	struct cpcap_rgb_led rgb_led;
-	struct cpcap_als_data als_data;
-};
-
 struct cpcap_batt_data {
 	int status;
 	int health;
@@ -576,7 +529,7 @@ struct cpcap_platform_data {
 	unsigned short *regulator_off_mode_values;
 	struct regulator_init_data *regulator_init;
 	struct cpcap_adc_ato *adc_ato;
-	struct cpcap_leds *leds;
+
 	void (*ac_changed)(struct power_supply *,
 			   struct cpcap_batt_ac_data *);
 	void (*batt_changed)(struct power_supply *,

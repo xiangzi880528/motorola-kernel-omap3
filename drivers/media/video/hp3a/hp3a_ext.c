@@ -79,16 +79,19 @@ EXPORT_SYMBOL(hp3a_update_wb);
 void hp3a_stream_on(void)
 {
 	g_tc.frame_count = 0;
+
 	memset(&g_tc.sensor_current, 0, sizeof(struct hp3a_sensor_param));
 	memset(&g_tc.sensor_requested, 0, sizeof(struct hp3a_sensor_param));
 	memset(&g_tc.sensor_stats, 0, sizeof(struct hp3a_sensor_param));
-	hp3a_flush_queue_irqsave(&g_tc.ready_stats_queue);
-	hp3a_flush_queue_irqsave(&g_tc.hist_hw_queue);
-	g_tc.raw_cap_sched_count = 0;
+
 	g_tc.v4l2_streaming = 1;
+	g_tc.raw_cap_sched_count = 0;
 
 	hp3a_enable_histogram();
 	hp3a_update_hardpipe();
+
+	hp3a_flush_queue_irqsave(&g_tc.ready_stats_queue);
+	hp3a_flush_queue_irqsave(&g_tc.hist_hw_queue);
 }
 EXPORT_SYMBOL(hp3a_stream_on);
 
@@ -102,6 +105,9 @@ void hp3a_stream_off(void)
 	g_tc.v4l2_streaming = 0;
 	g_tc.raw_cap_sched_count = 0;
 	g_tc.update_hardpipe = 0;
+
+	hp3a_flush_queue_irqsave(&g_tc.ready_stats_queue);
+	hp3a_flush_queue_irqsave(&g_tc.hist_hw_queue);
 }
 EXPORT_SYMBOL(hp3a_stream_off);
 
