@@ -254,6 +254,10 @@ static int mmc_switch_hs(struct mmc_card *card)
 	if (card->sw_caps.hs_max_dtr == 0)
 		return 0;
 
+	/* LIBtt04854 : All of 2GB sd card set to 24Mhz */
+	if (card->csd.read_blkbits == 10)
+		return 0;
+
 	err = -EIO;
 
 	status = kmalloc(64, GFP_KERNEL);
@@ -584,6 +588,13 @@ static void mmc_sd_detect(struct mmc_host *host)
 	if (!retries) {
 		printk(KERN_ERR "%s(%s): Unable to re-detect card (%d)\n",
 		       __func__, mmc_hostname(host), err);
+	}
+
+	if (!err && host->ops->get_cd && host->ops->get_cd(host) == 0) {
+		printk(KERN_ERR "%s(%s): card is accesible, but detect pin "
+			"is HIGH, card is being unplugged?\n",
+			__func__, mmc_hostname(host));
+		err = -1;
 	}
 #else
 	err = mmc_send_status(host->card, NULL);

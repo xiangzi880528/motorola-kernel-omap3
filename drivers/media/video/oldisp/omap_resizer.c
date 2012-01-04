@@ -24,8 +24,8 @@
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
-#include <linux/module.h>
 #include <linux/sched.h>
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>

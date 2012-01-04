@@ -28,6 +28,7 @@
 #include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/delay.h>
+#include <asm/bootinfo.h>
 
 static int ioctl(struct inode *inode,
 		 struct file *file, unsigned int cmd, unsigned long arg);
@@ -199,13 +200,25 @@ static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 	}
 
 	if (code == SYS_RESTART) {
-		/* Set the soft reset bit in the cpcap */
-		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_SOFT_RESET, CPCAP_BIT_SOFT_RESET);
-		if (ret) {
-			dev_err(&(misc_cpcap->spi->dev),
-				"SW Reset cpcap set failure.\n");
-			result = NOTIFY_BAD;
+		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
+			/* Set the outofcharge bit in the cpcap */
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_OUT_CHARGE_ONLY,
+				CPCAP_BIT_OUT_CHARGE_ONLY);
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"outofcharge cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+			/* Set the soft reset bit in the cpcap */
+			cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_SOFT_RESET,
+				CPCAP_BIT_SOFT_RESET);
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"reset cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
 		}
 
 		/* Check if we are starting recovery mode */
@@ -241,6 +254,15 @@ static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 		}
 		cpcap_regacc_write(misc_cpcap, CPCAP_REG_MI2, 0, 0xFFFF);
 	} else {
+		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+					 0,
+					 CPCAP_BIT_OUT_CHARGE_ONLY);
+		if (ret) {
+			dev_err(&(misc_cpcap->spi->dev),
+				"outofcharge cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+
 		/* Clear the soft reset bit in the cpcap */
 		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
 					CPCAP_BIT_SOFT_RESET);
@@ -296,12 +318,10 @@ static int __init cpcap_init(void)
 	return spi_register_driver(&cpcap_driver);
 }
 
-#ifdef CONFIG_CPCAP_USB
 static struct regulator_consumer_supply cpcap_vusb_consumers = {
 	.supply = "vusb",
 	.dev = &cpcap_usb_det_device.dev,
 };
-#endif
 
 static void cpcap_vendor_read(struct cpcap_device *cpcap)
 {
@@ -339,9 +359,15 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	if (retval < 0)
 		goto free_cpcap_irq;
 
-	/* Set Kpanic bit, which will be cleared at normal reboot */
-	cpcap_regacc_write(cpcap, CPCAP_REG_VAL1,
+	if (bi_powerup_reason() != PU_REASON_CHARGER) {
+		/* Set Kpanic bit, which will be cleared at normal reboot */
+		cpcap_regacc_write(cpcap, CPCAP_REG_VAL1,
 			CPCAP_BIT_AP_KERNEL_PANIC, CPCAP_BIT_AP_KERNEL_PANIC);
+
+	/* Set the soft reset bit in the cpcap */
+	cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+			CPCAP_BIT_SOFT_RESET, CPCAP_BIT_SOFT_RESET);
+	}
 
 	cpcap_vendor_read(cpcap);
 
@@ -352,13 +378,11 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	if (retval < 0)
 		goto free_cpcap_irq;
 
-#ifdef CONFIG_CPCAP_USB
 	/* the cpcap usb_detection device is a consumer of the
 	 * vusb regulator */
 	data->regulator_init[CPCAP_VUSB].num_consumer_supplies = 1;
 	data->regulator_init[CPCAP_VUSB].consumer_supplies =
 		&cpcap_vusb_consumers;
-#endif
 	/* loop twice becuase cpcap_regulator_probe may refer to other devices
 	 * in this list to handle dependencies between regulators.  Create them
 	 * all and then add them */

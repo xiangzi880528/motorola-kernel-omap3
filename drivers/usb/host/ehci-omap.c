@@ -620,6 +620,13 @@ static irqreturn_t usbtll_irq(int irq, void *pdev)
 	if (usbtll_irqstatus & 1) {
 		LOG_USBHOST_ACTIVITY(aUsbHostDbg, iUsbHostDbg, 0x30);
 		LOG_USBHOST_ACTIVITY(aUsbHostDbg, iUsbHostDbg, jiffies);
+		if (test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
+			ehci_omap_writel(omap->tll_base,
+				OMAP_USBTLL_IRQSTATUS, usbtll_irqstatus);
+			ehci_omap_writel(omap->tll_base, OMAP_USBTLL_IRQENABLE,
+				 0);
+			return IRQ_HANDLED;
+		}
 #ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_timeout(&omap->ehci->wake_lock_ehci_rwu, HZ/2);
 #endif
@@ -976,8 +983,8 @@ static int ehci_omap_bus_resume(struct usb_hcd *hcd)
 		if (omap->usbtll_fck)
 			clk_enable(omap->usbtll_fck);
 		mdelay(1);
-		ehci_omap_writel(omap->tll_base, OMAP_USBTLL_IRQSTATUS, 7);
 		ehci_omap_writel(omap->tll_base, OMAP_USBTLL_IRQENABLE, 0);
+		ehci_omap_writel(omap->tll_base, OMAP_USBTLL_IRQSTATUS, 7);
 		ehci_omap_writel(omap->tll_base, OMAP_TLL_SHARED_CONF,
 			1 | ehci_omap_readl(omap->tll_base,
 				OMAP_TLL_SHARED_CONF));

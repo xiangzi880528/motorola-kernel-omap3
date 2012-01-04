@@ -88,6 +88,7 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 {
 	struct cpcap_3mm5_data *data_3mm5 = data;
 	int new_state = NO_DEVICE;
+	int cpcap_status_gpio_2, cpcap_status_gpio_4;
 
 	if (irq != CPCAP_IRQ_HS)
 		return;
@@ -109,13 +110,23 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_HS);
 
 		send_key_event(data_3mm5, 0);
+		cpcap_uc_stop(data_3mm5->cpcap, CPCAP_MACRO_5);
 	} else {
+		cpcap_status_gpio_2 = cpcap_regacc_write(data_3mm5->cpcap,
+                        CPCAP_REG_GPIO2, 0,
+                        CPCAP_BIT_GPIO2DRV);
+
+                cpcap_status_gpio_4 = cpcap_regacc_write(data_3mm5->cpcap,
+                        CPCAP_REG_GPIO4, CPCAP_BIT_GPIO4DRV,
+                        CPCAP_BIT_GPIO4DRV);
+		if ((cpcap_status_gpio_2 < 0) || (cpcap_status_gpio_4 < 0)) {
+                	pr_err("Cpcap TV_out: %s: "
+                                "Control Analog Switch failed: \n", __func__);
+        	}
+		
 		cpcap_regacc_write(data_3mm5->cpcap, CPCAP_REG_TXI,
 				   (CPCAP_BIT_MB_ON2 | CPCAP_BIT_PTT_CMP_EN),
 				   (CPCAP_BIT_MB_ON2 | CPCAP_BIT_PTT_CMP_EN));
-		cpcap_regacc_write(data_3mm5->cpcap, CPCAP_REG_RXOA,
-				   CPCAP_BIT_ST_HS_CP_EN,
-				   CPCAP_BIT_ST_HS_CP_EN);
 		audio_low_power_clear(data_3mm5);
 
 		/* Give PTTS time to settle */
@@ -134,6 +145,9 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_HS);
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_MB2);
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
+
+		cpcap_uc_start(data_3mm5->cpcap, CPCAP_MACRO_5);
+                cpcap_uc_start(data_3mm5->cpcap, CPCAP_MACRO_4);
 	}
 
 	switch_set_state(&data_3mm5->sdev, new_state);
@@ -175,6 +189,51 @@ static void key_handler(enum cpcap_irqs irq, void *data)
 	cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
 }
 
+static int init_analog_switch(struct cpcap_3mm5_data *data)
+{
+        int cpcap_status = 0;
+        struct cpcap_3mm5_data *data_3mm5 = data;
+
+        /* set vlev = 2.775V for GPIO 2 */
+        cpcap_status = cpcap_regacc_write(data_3mm5->cpcap,
+                                        CPCAP_REG_GPIO2, CPCAP_BIT_GPIO2VLEV,
+                                        CPCAP_BIT_GPIO2VLEV);
+        if (cpcap_status < 0) {
+                pr_err("Cpcap TV_out: %s: "
+                                "Configuring GPIO2 VLEV failed: \n", __func__);
+                return cpcap_status;
+        }
+
+        /* set vlev = 2.775V for GPIO 4 */
+        cpcap_status = cpcap_regacc_write(data_3mm5->cpcap,
+                                        CPCAP_REG_GPIO4, CPCAP_BIT_GPIO4VLEV,
+                                        CPCAP_BIT_GPIO4VLEV);
+        if (cpcap_status < 0) {
+                pr_err("Cpcap TV_out: %s: "
+                                "Configuring GPIO4 VLEV failed: \n", __func__);
+                return cpcap_status;
+        }
+
+        cpcap_status = cpcap_regacc_write(data_3mm5->cpcap,
+                                        CPCAP_REG_GPIO2, CPCAP_BIT_GPIO2DIR,
+                                        CPCAP_BIT_GPIO2DIR);
+        if (cpcap_status < 0) {
+                pr_err("Cpcap TV_out: %s: "
+                                "Configuring GPIO2 failed: \n", __func__);
+                return cpcap_status;
+        }
+        cpcap_status = cpcap_regacc_write(data_3mm5->cpcap,
+                                        CPCAP_REG_GPIO4, CPCAP_BIT_GPIO4DIR,
+                                        CPCAP_BIT_GPIO4DIR);
+
+        if (cpcap_status < 0) {
+                pr_err("Cpcap TV_out: %s: "
+                                "Configuring GPIO4 failed: \n", __func__);
+                return cpcap_status;
+        }
+        return 0;
+}
+
 static int __init cpcap_3mm5_probe(struct platform_device *pdev)
 {
 	int retval = 0;
@@ -195,7 +254,10 @@ static int __init cpcap_3mm5_probe(struct platform_device *pdev)
 	data->sdev.print_name = print_name;
 	switch_dev_register(&data->sdev);
 	platform_set_drvdata(pdev, data);
-
+	retval = init_analog_switch(data);
+        if (retval < 0)
+              return retval;
+	
 	data->regulator = regulator_get(NULL, "vaudio");
 	if (IS_ERR(data->regulator)) {
 		dev_err(&pdev->dev, "Could not get regulator for cpcap_3mm5\n");

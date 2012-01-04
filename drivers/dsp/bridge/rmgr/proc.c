@@ -1072,7 +1072,7 @@ DSP_STATUS PROC_Load(DSP_HPROCESSOR hProcessor, IN CONST s32 iArgc,
 	struct DCD_MANAGER *hDCDHandle;
 	struct DMM_OBJECT *hDmmMgr;
 	u32 dwExtEnd;
-	u32 uProcId;
+	u32 uProcId = 0;
 #ifdef DEBUG
 	BRD_STATUS uBrdState;
 #endif

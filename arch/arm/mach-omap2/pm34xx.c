@@ -314,34 +314,39 @@ static int _prcm_int_handle_wakeup(void)
 static irqreturn_t prcm_interrupt_handler (int irq, void *dev_id)
 {
 	u32 irqstatus_mpu;
+	u32 irqenable;
 	int c = 0;
 
 	do {
+		irqenable = prm_read_mod_reg(OCP_MOD,
+				OMAP3_PRM_IRQENABLE_MPU_OFFSET);
 		irqstatus_mpu = prm_read_mod_reg(OCP_MOD,
-					OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
+				OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
 
 		if (irqstatus_mpu & (OMAP3430_WKUP_ST | OMAP3430_IO_ST)) {
 			c = _prcm_int_handle_wakeup();
-
 			/*
 			 * Is the MPU PRCM interrupt handler racing with the
 			 * IVA2 PRCM interrupt handler ?
 			 */
-			if (unlikely(c == 0))
-				printk_once(KERN_WARNING "prcm: WARNING: "
-						"PRCM indicated MPU wakeup "
-						"but no wakeup sources are "
-						"marked\n");
+			WARN(c == 0, "prcm: WARNING: PRCM indicated MPU wakeup "
+					"but no wakeup sources are marked\n");
 		} else {
 			/* XXX we need to expand our PRCM interrupt handler */
 			WARN(1, "prcm: WARNING: PRCM interrupt received, but "
-			     "no code to handle it (%08x)\n", irqstatus_mpu);
+				"no code to handle it (%08x)\n", irqstatus_mpu);
 		}
 
-		prm_write_mod_reg(irqstatus_mpu, OCP_MOD,
-					OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
+		irqenable = prm_read_mod_reg(OCP_MOD,
+				OMAP3_PRM_IRQENABLE_MPU_OFFSET);
+		irqstatus_mpu = prm_read_mod_reg(OCP_MOD,
+				OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
 
-	} while (prm_read_mod_reg(OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET));
+		prm_write_mod_reg((irqstatus_mpu & irqenable), OCP_MOD,
+				OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
+
+	} while (prm_read_mod_reg(OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET)
+			& irqenable);
 
 	return IRQ_HANDLED;
 }
@@ -349,6 +354,13 @@ static irqreturn_t prcm_interrupt_handler (int irq, void *dev_id)
 static void restore_control_register(u32 val)
 {
 	__asm__ __volatile__ ("mcr p15, 0, %0, c1, c0, 0" : : "r" (val));
+}
+
+static inline void omap3_save_neon_context(void)
+{
+#ifdef CONFIG_VFP
+	vfp_pm_save_context();
+#endif
 }
 
 /* Function to restore the table entry that was modified for enabling MMU */
@@ -419,8 +431,12 @@ void omap_sram_idle(void)
 	pwrdm_pre_transition();
 
 	/* NEON control */
-	if (pwrdm_read_pwrst(neon_pwrdm) == PWRDM_POWER_ON)
+	if (pwrdm_read_pwrst(neon_pwrdm) == PWRDM_POWER_ON) {
 		pwrdm_set_next_pwrst(neon_pwrdm, mpu_next_state);
+		neon_next_state = mpu_next_state;
+		if (neon_next_state == PWRDM_POWER_OFF)
+			omap3_save_neon_context();
+	}
 
 	/* Enable IO-PAD and IO-CHAIN wakeups */
 	per_next_state = pwrdm_read_next_pwrst(per_pwrdm);

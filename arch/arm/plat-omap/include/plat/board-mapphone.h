@@ -65,11 +65,15 @@ extern struct hplens_platform_data mapphone_hplens_platform_data;
 #define GPIO_MT9P012_RESET		98
 #define GPIO_SILENCE_KEY		100
 #define GPIO_SLIDER			177
+#define GPIO_CAMERA_RESET   98
+#define GPIO_SILENCE_KEY    110
 #if defined(CONFIG_VIDEO_OV8810)
 #define GPIO_OV8810_RESET	98
 #define GPIO_OV8810_STANDBY	64
-#define GPIO_FLASH_READY	36
 #endif
+
+#define OMAP_MCAM_SRC_CLK		864000000
+#define OMAP_MCAM_SRC_DIV		4
 #if defined(CONFIG_VIDEO_OV5650)
 #define GPIO_OV5650_RESET	98
 #define GPIO_OV5650_STANDBY	64

@@ -76,7 +76,6 @@ static struct clk *usim_ick;
 static struct clk *omap_96m_fck;
 static struct clk *omap_120m_fck;
 
-static struct device *sim_dev;
 /******************************************************************************
 * Constants
 ******************************************************************************/
@@ -94,10 +93,8 @@ static struct device *sim_dev;
 #define CM_CLKSEL_WK (CM_BASE + 0x0C40)
 #define PBIAS_CONTROL_LITE (0x48002520)
 #define DMA_SYSCONFIG (0x4805602C)
-#define CONTROL_WKUP_CTRL (0x48002A5C)
 #define INTCPS_ITR1 (0x482000A0)
 #define	WP_TPIR	(1 << 5)
-
 /*
   OFFSET TO DMA REGISTER
   This is required to keep DMA from going to sleep on us as the lat APIs don't seem to work
@@ -117,16 +114,6 @@ static struct device *sim_dev;
 #define PBIASPWRDNZ1       0x0200
 #define PBIASSPEEDCNTL1    0x0400
 #define PBIASVMODEERROR1   0x0800
-
-
-/*
-  OFFSET TO CONTROL WKUP CTRL register
-
-  IMPORTANT NOTE(S) :
-  None
-
-*/
-#define CONTROL_WKUP_CTRL_MASK 			0x00000040
 
 /*
   SIM SOURCE CLOCK SELECTION
@@ -288,6 +275,12 @@ static struct platform_driver sim_driver = {
 	.remove = sim_remove,
 	.suspend = sim_suspend,
 	.resume = sim_resume,
+};
+
+/* Platform device structure for the SIM driver */
+static struct platform_device sim_device = {
+	.name = SIM_DEV_NAME,
+	.id = 1,
 };
 
 /*This structure defines the file operations for the SIM device */
@@ -1099,7 +1092,8 @@ static int sim_ioctl(struct inode *inode, struct file *file,
 				    DMA_SYSCONFIG_MIDLEMODE(1));
 
 				/* Request the latency constraint */
-				omap_pm_set_max_mpu_wakeup_lat(sim_dev, 10);
+				omap_pm_set_max_mpu_wakeup_lat(&sim_device.
+							       dev, 10);
 
 				/* enable the SIM FCLK */
 				clk_enable(usim_fck);
@@ -1125,7 +1119,8 @@ static int sim_ioctl(struct inode *inode, struct file *file,
 				clk_disable(usim_fck);
 
 				/* Release the latency constraint */
-				omap_pm_set_max_mpu_wakeup_lat(sim_dev, -1);
+				omap_pm_set_max_mpu_wakeup_lat(&sim_device.
+							       dev, -1);
 			}
 
 			sim_low_power_enabled = (BOOL) args_kernel[1];
@@ -1790,7 +1785,6 @@ IMPORTANT NOTES:
 */
 static void sim_module_set_voltage_level(SIM_MODULE_VOLTAGE_LEVEL level)
 {
-
 	/* power down the voltage regulator */
 	if (regulator_enabled_flag) {
 		regulator_disable(vsim_regulator);
@@ -2146,6 +2140,13 @@ int sim_slim_status_handler()
 			sim_module_rx_event |= SIM_MODULE_EVENT_NULL_BYTE_OVERFLOW;
 			status = 1;
 		}
+		/* send incomplete slim status with RX_A event */
+		else {
+			sim_module_rx_event |= SIM_MODULE_EVENT_RX_A;
+			sim_module_rx_event |=
+				SIM_MODULE_EVENT_INCOMPLETE_SLIM_STATUS;
+			status = 1;
+		}
 	}
 
 	/* if this interrupt caused a user space event ... */
@@ -2218,6 +2219,10 @@ static BOOL sim_mutex_update(UINT8 mutex_request)
 		else if((sim_mutex_locked_by_id == KERNEL_MUTEX_ID) &&
 			(mutex_requester == SCPC_MUTEX_ID)) {
 			sim_mutex_locked_by_id = SCPC_MUTEX_ID;
+			success = TRUE;
+		}
+		/* If its locked and requested by the owner */
+		else if (sim_mutex_locked_by_id == mutex_requester) {
 			success = TRUE;
 		}
 		/* If it's locked, and requested by anyone but the KERNEL, then queue the request */
@@ -2332,31 +2337,6 @@ void sim_module_dma_callback(INT32 lch, UINT16 ch_status, void *data)
 }
 
 /* DESCRIPTION:
-       The SIM timer callback function. This is called by the kernel wakeup
-       timer, when the sim timer expire, and the system is NOT suspended.
-
-   INPUTS:
-       None.
-
-   OUTPUTS:
-       int ret - the return value is currently ignored
-
-   IMPORTANT NOTES:
-       None.
-*/
-static int sim_timer_callback(void)
-{
-    int ret = 0;
-
-    sim_module_rx_event |= SIM_MODULE_EVENT_TIMER_EXP;
-
-    /* wake up the user space event thread */
-    wake_up_interruptible(&sim_module_wait);
-
-    return ret;
-}
-
-/* DESCRIPTION:
        The probe routine.
  
    INPUTS:
@@ -2400,50 +2380,6 @@ static int sim_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	vsim_regulator = regulator_get(NULL, "vsim");
-	if (IS_ERR(vsim_regulator)) {
-		printk(KERN_ERR"sim_probe: Could not get VSIM regulator\n");
-		return PTR_ERR(vsim_regulator);
-	}
-	vsimcard_regulator = regulator_get(NULL, "vsimcard");
-	if (IS_ERR(vsimcard_regulator)) {
-		printk(KERN_ERR"sim_probe: Could not get VSIMCARD regulator\n");
-		return PTR_ERR(vsimcard_regulator);
-	}
-
-	sim_dev = &(pdev->dev);
-	usim_fck = clk_get(sim_dev, USIM_FCK);
-	if (IS_ERR(usim_fck)) {
-		tracemsg("sim_probe: Error getting USIM FCLK.\n");
-		ret = PTR_ERR(usim_fck);
-	}
-
-	usim_ick = clk_get(sim_dev, USIM_ICK);
-	if (IS_ERR(usim_ick)) {
-		tracemsg("sim_probe: Error getting USIM ICLK.\n");
-		ret = PTR_ERR(usim_ick);
-	}
-
-	omap_96m_fck = clk_get(sim_dev, OMAP_96M_FCK);
-	if (IS_ERR(omap_96m_fck)) {
-		tracemsg("sim_probe: Error getting 96M FCLK.\n");
-		ret = PTR_ERR(omap_96m_fck);
-	}
-
-	omap_120m_fck = clk_get(sim_dev, OMAP_120M_FCK);
-	if (IS_ERR(omap_120m_fck)) {
-		tracemsg("sim_probe: Error getting 120M FCLK.\n");
-		ret = PTR_ERR(omap_120m_fck);
-	}
-#ifdef  CONFIG_QUICK_WAKEUP
-	quickwakeup_register(&sim_qw_ops);
-	sim_timer = wakeup_create_status_timer(sim_timer_callback);
-	if (sim_timer == NULL) {
-		tracemsg("sim_probe: sim_timer creation failed.\n");
-		ret = -ENOMEM;
-	}
-
-#endif
 	tracemsg("sim_probe: SIM Module successfully probed\n");
 	return ret;
 }
@@ -2462,20 +2398,6 @@ static int sim_probe(struct platform_device *pdev)
 */
 static int sim_remove(struct platform_device *pdev)
 {
-	sim_dev = NULL;
-	regulator_put(vsim_regulator);
-	regulator_put(vsimcard_regulator);
-
-	/* release the clock resources */
-	clk_put(usim_fck);
-	clk_put(usim_ick);
-	clk_put(omap_96m_fck);
-	clk_put(omap_120m_fck);
-#ifdef CONFIG_QUICK_WAKEUP
-	/* free the SIM status timer */
-	wakeup_del_status_timer(sim_timer);
-	sim_timer = NULL;
-#endif
 	device_destroy(sim_class, MKDEV(sim_module_major, 0));
 	class_destroy(sim_class);
 	unregister_chrdev(sim_module_major, SIM_DEV_NAME);
@@ -2521,7 +2443,6 @@ static int sim_resume(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_QUICK_WAKEUP
 /* DESCRIPTION:
        The SIM quick wakeup callback function. This is called by the kernel clock handler when
    a GPT1 experation happens due to a SCIM set timer. This function also restarts the clock if
@@ -2580,7 +2501,32 @@ static int sim_qw_check(void)
 	}
 	return success;
 }
-#endif
+
+/* DESCRIPTION:
+       The SIM timer callback function. This is called by the kernel wakeup timer, 
+       when the sim timer expire, and the system is NOT suspended.
+ 
+   INPUTS:
+       None. 
+
+   OUTPUTS:
+       int ret - the return value is currently ignored
+
+   IMPORTANT NOTES:
+       None.   
+*/
+static int sim_timer_callback(void)
+{
+    int ret = 0;
+	
+    sim_module_rx_event |= SIM_MODULE_EVENT_TIMER_EXP;
+
+    /* wake up the user space event thread */
+    wake_up_interruptible(&sim_module_wait);
+
+    return ret;
+}
+
 /* DESCRIPTION:
        The SIM intialization function.
  
@@ -2599,13 +2545,63 @@ int __init sim_init(void)
 
 	tracemsg("sim_init: SIM driver loading...\n");
 
+	vsim_regulator = regulator_get(NULL, "vsim");
+	if (IS_ERR(vsim_regulator)) {
+		printk("Could not get VSIM regulator\n");
+		return PTR_ERR(vsim_regulator);
+	}
+	vsimcard_regulator = regulator_get(NULL, "vsimcard");
+	if (IS_ERR(vsimcard_regulator)) {
+		printk("Could not get VSIMCARD regulator\n");
+		return PTR_ERR(vsimcard_regulator);
+	}
+
 	/* Register the Driver */
 	ret = platform_driver_register(&sim_driver);
-	if (ret)
+	if (ret != 0) {
 		tracemsg("sim_init: Driver registration failed.\n");
-	else
+	} else {
 		tracemsg("sim_init: Driver regristration passed.\n");
+		ret = platform_device_register(&sim_device);
+		if (ret != 0) {
+			platform_driver_unregister(&sim_driver);
+			tracemsg
+			    ("sim_init: Device registration failed.\n");
+		} else {
+			tracemsg
+			    ("sim_init: Device registration passed.\n");
+		}
+	}
 
+	usim_fck = clk_get(&sim_device.dev, USIM_FCK);
+	if (IS_ERR(usim_fck)) {
+		tracemsg("sim_init: Error getting USIM FCLK.\n");
+		ret = PTR_ERR(usim_fck);
+	}
+
+	usim_ick = clk_get(&sim_device.dev, USIM_ICK);
+	if (IS_ERR(usim_ick)) {
+		tracemsg("sim_init: Error getting USIM ICLK.\n");
+		ret = PTR_ERR(usim_ick);
+	}
+
+	omap_96m_fck = clk_get(&sim_device.dev, OMAP_96M_FCK);
+	if (IS_ERR(omap_96m_fck)) {
+		tracemsg("sim_init: Error getting 96M FCLK.\n");
+		ret = PTR_ERR(omap_96m_fck);
+	}
+
+	omap_120m_fck = clk_get(&sim_device.dev, OMAP_120M_FCK);
+	if (IS_ERR(omap_120m_fck)) {
+		tracemsg("sim_init: Error getting 120M FCLK.\n");
+		ret = PTR_ERR(omap_120m_fck);
+	}
+	quickwakeup_register(&sim_qw_ops);
+	sim_timer = wakeup_create_status_timer(sim_timer_callback);
+	if (sim_timer == NULL) {
+		tracemsg("sim_init: sim_timer creation failed.\n");
+		ret = -ENOMEM;
+	}
 	return ret;
 }
 
@@ -2623,7 +2619,22 @@ int __init sim_init(void)
 */
 static void __exit sim_exit(void)
 {
-	/* unregister the driver */
+	regulator_put(vsim_regulator);
+	regulator_put(vsimcard_regulator);
+
+
+	/* release the clock resources */
+	clk_put(usim_fck);
+	clk_put(usim_ick);
+	clk_put(omap_96m_fck);
+	clk_put(omap_120m_fck);
+
+        /* free the SIM status timer */
+        wakeup_del_status_timer(sim_timer);
+        sim_timer = NULL;
+
+	/* unregister the device */
+	platform_device_unregister(&sim_device);
 	platform_driver_unregister(&sim_driver);
 	tracemsg("sim_exit: SIM driver successfully unloaded.\n");
 }

@@ -29,8 +29,10 @@
 
 #include <linux/akm8973.h>
 #include <linux/lis331dlh.h>
+#include <linux/kxtf9.h>
 
 extern struct akm8973_platform_data mapphone_akm8973_data;
 extern struct lis331dlh_platform_data mapphone_lis331dlh_data;
+extern struct kxtf9_platform_data mapphone_kxtf9_data;
 
 #endif /* __BOARD_MAPPHONE_SENSORS_H */

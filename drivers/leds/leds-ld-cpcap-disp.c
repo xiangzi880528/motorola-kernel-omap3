@@ -27,8 +27,10 @@
 struct disp_button_led_data {
 	struct led_classdev disp_button_class_dev;
 	struct cpcap_device *cpcap;
+#ifndef CONFIG_LEDS_SHOLEST
 	struct regulator *regulator;
 	int regulator_state;
+#endif
 };
 
 static void disp_button_set(struct led_classdev *led_cdev,
@@ -41,6 +43,10 @@ static void disp_button_set(struct led_classdev *led_cdev,
 			 disp_button_class_dev);
 
 	if (value > 0) {
+#ifdef CONFIG_LEDS_SHOLEST
+		brightness = (LD_BLED_CPCAP_DUTY_CYCLE |
+			LD_BLED_CPCAP_CURRENT | LD_DISP_BUTTON_ON);
+#else
 		brightness = (LD_DISP_BUTTON_DUTY_CYCLE |
 			LD_DISP_BUTTON_CURRENT | LD_DISP_BUTTON_ON);
 
@@ -49,34 +55,55 @@ static void disp_button_set(struct led_classdev *led_cdev,
 			regulator_enable(disp_button_led_data->regulator);
 			disp_button_led_data->regulator_state = 1;
 		}
+#endif
 
+#ifdef CONFIG_LEDS_SHOLEST
+		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
+						  CPCAP_REG_BLEDC,
+						  brightness,
+						  LD_BLED_CPCAP_MASK);
+#else
 		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
 						  CPCAP_REG_KLC,
 						  brightness,
 						  LD_DISP_BUTTON_CPCAP_MASK);
 
+#endif
 		if (cpcap_status < 0)
 			pr_err("%s: Writing to the register failed for %i\n",
 			       __func__, cpcap_status);
 
 	} else {
+#ifndef CONFIG_LEDS_SHOLEST
 		if ((disp_button_led_data->regulator) &&
 		    (disp_button_led_data->regulator_state == 1)) {
 			regulator_disable(disp_button_led_data->regulator);
 			disp_button_led_data->regulator_state = 0;
 		}
+#endif
 		/* Due to a HW issue turn off the current then
 		turn off the duty cycle */
 		brightness = 0x01;
+#ifdef CONFIG_LEDS_SHOLEST
+		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
+					  CPCAP_REG_BLEDC, brightness,
+					  LD_BLED_CPCAP_MASK);
+#else
 		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
 					  CPCAP_REG_KLC, brightness,
 					  LD_DISP_BUTTON_CPCAP_MASK);
 
+#endif
 		brightness = 0x00;
+#ifdef CONFIG_LEDS_SHOLEST
+		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
+						  CPCAP_REG_BLEDC, brightness,
+						  LD_BLED_CPCAP_MASK);
+#else
 		cpcap_status = cpcap_regacc_write(disp_button_led_data->cpcap,
 						  CPCAP_REG_KLC, brightness,
 						  LD_DISP_BUTTON_CPCAP_MASK);
-
+#endif
 		if (cpcap_status < 0)
 			pr_err("%s: Writing to the register failed for %i\n",
 			       __func__, cpcap_status);
@@ -104,15 +131,17 @@ static int disp_button_probe(struct platform_device *pdev)
 	info->cpcap = pdev->dev.platform_data;
 	platform_set_drvdata(pdev, info);
 
-	info->regulator = regulator_get(&pdev->dev, "vdd_button_backlight");
+#ifndef CONFIG_LEDS_SHOLEST
+	info->regulator = regulator_get(&pdev->dev, LD_SUPPLY);
 	if (IS_ERR(info->regulator)) {
-		pr_err("%s: Cannot get regulator\n", __func__);
+		pr_err("%s: Cannot get %s regulator\n", __func__, LD_SUPPLY);
 		ret = PTR_ERR(info->regulator);
 		goto exit_request_reg_failed;
 
 	}
 
 	info->regulator_state = 0;
+#endif
 
 	info->disp_button_class_dev.name = "button-backlight";
 	info->disp_button_class_dev.brightness_set = disp_button_set;
@@ -125,8 +154,10 @@ static int disp_button_probe(struct platform_device *pdev)
 	return ret;
 
 err_reg_button_class_failed:
+#ifndef CONFIG_LEDS_SHOLEST
 	if (info->regulator)
 		regulator_put(info->regulator);
+#endif
 exit_request_reg_failed:
 	kfree(info);
 	return ret;
@@ -136,8 +167,10 @@ static int disp_button_remove(struct platform_device *pdev)
 {
 	struct disp_button_led_data *info = platform_get_drvdata(pdev);
 
+#ifndef CONFIG_LEDS_SHOLEST
 	if (info->regulator)
 		regulator_put(info->regulator);
+#endif
 
 	led_classdev_unregister(&info->disp_button_class_dev);
 	return 0;

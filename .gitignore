@@ -80,5 +80,5 @@ GTAGS
 \#*#
 
 # temp config file
-__ext_mapphone_defconfig
-
+bootimg/
+Kernel.mk

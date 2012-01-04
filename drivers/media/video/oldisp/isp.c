@@ -49,7 +49,6 @@
 #include <linux/pagemap.h>
 
 #include <plat/control.h>
-#include <mach/board-sholest.h>
 
 #include "isp.h"
 #include "ispmmu.h"
@@ -66,6 +65,9 @@
 #include "hp3a.h"
 #endif
 
+#define OMAP_MCAM_SRC_CLK		    864000000
+#define OMAP_MCAM_SRC_DIV		    2
+#define OMAP_MCAM_SRC_DIV_MIPI	    4
 
 void *buff_addr;
 dma_addr_t buff_addr_mapped;

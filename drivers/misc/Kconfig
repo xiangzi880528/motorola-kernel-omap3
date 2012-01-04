@@ -360,10 +360,6 @@ config VIB_OMAP_PWM
 	bool "OMAP PWM Vibrator"
 	default n
 
-config VIB_PWM
-        bool "PWM Vibrator"
-        default n
-
 config WL127X_TEST
 	tristate "TI wl127x Bluetooth GPIO test driver for board-sholes"
 	depends on (MACH_SHOLES || MACH_MAPPHONE) && WL127X_RFKILL && BT
@@ -376,7 +372,7 @@ config SYSPANIC
 	default n
 
 config MODEM_PM_DRIVER
-	tristate "Motorola modem pm driver"
+	bool "Motorola Modem PM Driver"
 	default n
 
 source "drivers/misc/c2port/Kconfig"

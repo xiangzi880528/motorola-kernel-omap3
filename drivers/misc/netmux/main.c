@@ -49,6 +49,11 @@
 #include "register.h"
 #include "debug.h"
 
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/wakelock.h>
+
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
@@ -91,6 +96,11 @@ struct wake_lock netmux_receive_wakelock;
  * A list of registered interfaces is defined in register.c
  */
 extern INTERFACELIST *interfacelist;
+
+/*
+ * create /dev/netmux
+ */
+struct class *netmux_class = NULL;
 
 /*
  * If debugging or logging is turned on setup the appropriate
@@ -145,11 +155,6 @@ static char LDLogState[LDLOG_COMMAND_LEN];
  * mux_deferred flag.
  */
 spinlock_t ild_lock = SPIN_LOCK_UNLOCKED;
-
-/*
- * create /dev/netmux
- */
-struct class *netmux_class = NULL;
 
 /*
  * Define all the globals required.
@@ -905,8 +910,9 @@ static int __init netmux_init(void)
 		       "NETMUX_send");
 	wake_lock_init(&netmux_receive_wakelock, WAKE_LOCK_SUSPEND,
 		       "NETMUX_receive");
-	hw_ctrl_ipc_register(LDInit);
 
+	hw_ctrl_ipc_register(LDInit);
+	
 	return 0;
 }
 
@@ -916,31 +922,6 @@ static int __init netmux_init(void)
  */
 static void __exit netmux_exit(void)
 {
-	    int index;
-    HW_CTRL_IPC_STATUS_T status;
-
-    DEBUG("%s()\n", __func__);
-
-    UnregisterMUXLink(ifmux.id);
-
-    LDProcCleanup();
-
-    status = hw_ctrl_ipc_close(ipc_channel_handle);
-    if (status != HW_CTRL_IPC_STATUS_OK)
-	printk(KERN_INFO "ipc close error, status = %d\n", status);
-    else
-	printk(KERN_INFO "ipc close OK\n");
-
-    skb_queue_purge(&send_queue);
-
-    for(index =0;index < RECEIVE_LIST_MAX_SIZE;index++)
-    {
-	if (receive_commbuff[index])
-		dev_kfree_skb(receive_commbuff[index]);
-    }
-
-    wake_lock_destroy(&netmux_to_usb);
-    wake_lock_destroy(&usb_to_netmux);
 	printk(KERN_INFO "Cleaning Up NetMUX\n");
 	while (interfacelist)
 		DeactivateMUX(interfacelist);

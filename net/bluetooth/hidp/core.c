@@ -376,6 +376,8 @@ static void hidp_process_hid_control(struct hidp_session *session,
 		/* Flush the transmit queues */
 		skb_queue_purge(&session->ctrl_transmit);
 		skb_queue_purge(&session->intr_transmit);
+		session->intr_sock->sk->sk_err = EUNATCH;
+		session->ctrl_sock->sk->sk_err = EUNATCH;
 
 		/* Kill session thread */
 		atomic_inc(&session->terminate);

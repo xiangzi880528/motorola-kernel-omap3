@@ -304,6 +304,9 @@ struct IPC_DBG_INFO {
 	u32 aIpcW[IPC_DBG_ARRAY_SIZE];
 	u32 aLogR[IPC_DBG_ARRAY_SIZE];
 	u32 aDma[IPC_DBG_ARRAY_SIZE];
+	u32 aTll[IPC_DBG_ARRAY_SIZE];
+	u32 aUhh[IPC_DBG_ARRAY_SIZE];
+	u32 aEhci[IPC_DBG_ARRAY_SIZE];
 };
 extern struct IPC_DBG_INFO sIpcDbg;
 #define LOG_IPC_ACTIVITY(array, index, event) \

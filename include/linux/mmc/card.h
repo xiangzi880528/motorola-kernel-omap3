@@ -41,6 +41,7 @@ struct mmc_csd {
 
 struct mmc_ext_csd {
 	u8			rev;
+	u8			csd_structure;
 	unsigned int		sa_timeout;		/* Units: 100ns */
 	unsigned int		hs_max_dtr;
 	unsigned int		sectors;

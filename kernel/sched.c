@@ -5342,6 +5342,9 @@ static noinline void __schedule_bug(struct task_struct *prev)
 		show_regs(regs);
 	else
 		dump_stack();
+
+	if (!oops_in_progress)
+		BUG();
 }
 
 /*
