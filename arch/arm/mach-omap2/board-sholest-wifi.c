@@ -56,6 +56,7 @@ static int sholest_wifi_power_state;
 int sholest_wifi_power(int on)
 {
 	printk("%s: %d\n", __func__, on);
+	change_vio_mode(1, on);
 	gpio_set_value(SHOLEST_WIFI_PMENA_GPIO, on);
 	sholest_wifi_power_state = on;
 	return 0;

@@ -90,7 +90,9 @@ static enum power_supply_property cpcap_batt_props[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-	POWER_SUPPLY_PROP_TEMP
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER
 };
 
 static enum power_supply_property cpcap_batt_ac_props[] =
@@ -400,6 +402,14 @@ static int cpcap_batt_get_property(struct power_supply *psy,
 		val->intval = sply->batt_state.batt_temp;
 		break;
 
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = sply->batt_state.batt_full_capacity;
+		break;
+
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+		val->intval = sply->batt_state.batt_capacity_one;
+		break;
+
 	default:
 		ret = -EINVAL;
 		break;
@@ -435,6 +445,8 @@ static int cpcap_batt_probe(struct platform_device *pdev)
 	sply->batt_state.capacity = 100;	/* Percentage */
 	sply->batt_state.batt_volt = 4200000;	/* uV */
 	sply->batt_state.batt_temp = 230;	/* tenths of degrees Celsius */
+	sply->batt_state.batt_full_capacity = 0;
+	sply->batt_state.batt_capacity_one = 100;
 
 	sply->ac_state.online = 0;
 

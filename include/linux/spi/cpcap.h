@@ -295,6 +295,9 @@ enum {
 
 	CPCAP_IOCTL_NUM_UC__START,
 	CPCAP_IOCTL_NUM_UC_MACRO_START,
+	CPCAP_IOCTL_NUM_UC_MACRO_STOP,
+	CPCAP_IOCTL_NUM_UC_GET_VENDOR,
+	CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE,
 	CPCAP_IOCTL_NUM_UC__END,
 };
 
@@ -487,6 +490,8 @@ struct cpcap_batt_data {
 	int capacity;
 	int batt_volt;
 	int batt_temp;
+	int batt_full_capacity;
+	int batt_capacity_one;
 };
 
 struct cpcap_batt_ac_data {
@@ -516,6 +521,7 @@ struct cpcap_platform_data {
 			     struct cpcap_batt_data *);
 	void (*usb_changed)(struct power_supply *,
 			    struct cpcap_batt_usb_data *);
+	unsigned short is_umts;
 };
 
 struct cpcap_adc_request {
@@ -605,6 +611,14 @@ struct cpcap_regacc {
 
 #define CPCAP_IOCTL_UC_MACRO_START \
 	_IOWR(0, CPCAP_IOCTL_NUM_UC_MACRO_START, enum cpcap_macro)
+#define CPCAP_IOCTL_UC_MACRO_STOP \
+	_IOWR(0, CPCAP_IOCTL_NUM_UC_MACRO_STOP, enum cpcap_macro)
+
+#define CPCAP_IOCTL_UC_GET_VENDOR \
+	_IOWR(0, CPCAP_IOCTL_NUM_UC_GET_VENDOR, enum cpcap_vendor)
+
+#define CPCAP_IOCTL_UC_SET_TURBO_MODE \
+	_IOW(0, CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE, unsigned short)
 
 /*#define CPCAP_AUDIO_REG_DEBUG*/
 

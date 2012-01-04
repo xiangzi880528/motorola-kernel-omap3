@@ -458,6 +458,7 @@ static struct cpcap_platform_data sholest_cpcap_data = {
 	.ac_changed = ac_changed,
 	.batt_changed = batt_changed,
 	.usb_changed = NULL,
+	.is_umts = 0,
 };
 
 static struct spi_board_info sholest_spi_board_info[] __initdata = {
@@ -602,6 +603,8 @@ static void __init cpcap_of_init(void)
 		of_node_put(node);
 		return;
 	}
+
+	sholest_cpcap_data.is_umts = 1;
 
 	count = size / unit_size;
 	printk(KERN_INFO "cpcap init size = %d\n", count);

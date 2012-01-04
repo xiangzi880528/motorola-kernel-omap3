@@ -54,6 +54,8 @@
 #include <mach/system.h>
 #include <linux/usb/android.h>
 #include <linux/wakelock.h>
+#include <linux/spi/cpcap.h>
+#include <linux/spi/cpcap-regbits.h>
 
 #include "cm-regbits-34xx.h"
 
@@ -147,9 +149,9 @@ static struct omap_opp sholest_mpu_rate_table[] = {
 	/*OPP3*/
 	{S500M, VDD1_OPP3, 0x32},
 	/*OPP4*/
-	{S550M, VDD1_OPP4, 0x38},
+	{S600M, VDD1_OPP4, 0x38},
 	/*OPP5*/
-	{S600M, VDD1_OPP5, 0x3E},
+	{S720M, VDD1_OPP5, 0x3E},
 };
 
 #define S80M 80000000
@@ -1302,6 +1304,66 @@ static struct notifier_block sholest_pm_reboot_notifier = {
 
 static unsigned long reset_status = COLDRESET ;
 #endif
+
+/* This is VIO HW issue WA
+ * Issue: The VIO (SW3 @CPCAP) is set to LP mode in retention mode.
+ * When VIO is set to LP in retention, it switch to PFM which can
+ * only source a few mA of current. Since WiFi/BT can wakeup
+ * independent of OMAP, it outdraws the VIO supply in LP mode,
+ * causing voltage to dip significantly which eventually crashes the WiFi.
+ * VIO also source eMMC, this cause the MMC port to crashes,
+ * which then eventually propagates to phone freeze and panic.
+ *
+ * WA: set VIO active when Wifi or BI is on to prevent volt dip.
+ * Only Apply the WA on HW without DC-DC converter put in VIO supply.
+ */
+static DEFINE_MUTEX(vio_access);
+static struct cpcap_device *misc_cpcap;
+
+static int cpcap_vio_active_probe(struct platform_device *pdev)
+{
+	misc_cpcap = pdev->dev.platform_data;
+	return 0;
+}
+
+static struct platform_driver cpcap_vio_active_driver = {
+	.probe  = cpcap_vio_active_probe,
+	.driver = {
+		.name   = "cpcap_vio_active",
+		.owner  = THIS_MODULE,
+	},
+};
+
+void change_vio_mode(int source, int value)
+{
+	static int bt_request;
+	static int wifi_request;
+
+	/*If have DC-DC converter, skip it*/
+	if (misc_cpcap == NULL)
+		return;
+
+	mutex_lock(&vio_access);
+	if (source == 0)
+		bt_request = value;
+	else if (source == 1)
+		wifi_request = value;
+	else {
+		printk(KERN_ERR "unknown source to vio ");
+		mutex_unlock(&vio_access);
+		return;
+	}
+
+	if (bt_request | wifi_request)
+		cpcap_regacc_write(misc_cpcap, CPCAP_REG_S3C,
+				0, CPCAP_BIT_SW3STBY);
+	else
+		cpcap_regacc_write(misc_cpcap, CPCAP_REG_S3C,
+				CPCAP_BIT_SW3STBY, CPCAP_BIT_SW3STBY);
+
+	mutex_unlock(&vio_access);
+}
+
 static void sholest_pm_init(void)
 {
 	omap3_set_prm_setup_vc(&sholest_prm_setup);
@@ -1337,6 +1399,7 @@ static void sholest_pm_init(void)
 
 	platform_device_register(&sholest_bpwake_device);
 	platform_driver_register(&sholest_bpwake_driver);
+	platform_driver_register(&cpcap_vio_active_driver);
 
 #ifdef CONFIG_MEM_DUMP
 	if (reset_status == COLDRESET)
@@ -1496,12 +1559,14 @@ static int sholest_wl1271_release(void)
 
 static int sholest_wl1271_enable(void)
 {
+	change_vio_mode(0, 1);
 	gpio_set_value(SHOLEST_WL1271_WAKE_GPIO, 0);
 	return 0;
 }
 
 static int sholest_wl1271_disable(void)
 {
+	change_vio_mode(0, 0);
 	gpio_set_value(SHOLEST_WL1271_WAKE_GPIO, 1);
 	return 0;
 }

@@ -70,4 +70,5 @@ extern struct hplens_platform_data sholest_hplens_platform_data;
 #define is_cdma_phone() (!strcmp("CDMA", bp_model))
 extern char *bp_model;
 
+extern void change_vio_mode(int source, int value);
 #endif /*  __ASM_ARCH_OMAP_SHOLEST_H */

@@ -157,6 +157,14 @@ struct platform_device cpcap_af_led = {
 };
 #endif
 
+static struct platform_device cpcap_vio_active_device = {
+	.name		= "cpcap_vio_active",
+	.id		= -1,
+	.dev		= {
+		.platform_data = NULL,
+	},
+};
+
 static struct platform_device *cpcap_devices[] = {
 	&cpcap_adc_device,
 	&cpcap_key_device,
@@ -178,6 +186,7 @@ static struct platform_device *cpcap_devices[] = {
 #ifdef CONFIG_LEDS_AF_LED
 	&cpcap_af_led,
 #endif
+	&cpcap_vio_active_device,
 };
 
 static struct cpcap_device *misc_cpcap;
