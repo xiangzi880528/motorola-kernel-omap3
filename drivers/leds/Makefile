@@ -31,7 +31,8 @@ obj-$(CONFIG_LEDS_BU9847)		+= leds-bu9847.o
 obj-$(CONFIG_LEDS_AF_LED)		+= leds-ld-cpcap-afled.o
 obj-$(CONFIG_LEDS_SHOLES)		+= leds-ld-cpcap-disp.o \
 					   leds-ld-cpcap-rgb.o \
-					   leds-ld-cpcap-kpad.o
+					   leds-ld-cpcap-kpad.o \
+					   low_batt_led.o
 
 # LED Triggers
 obj-$(CONFIG_LEDS_TRIGGER_TIMER)	+= ledtrig-timer.o
